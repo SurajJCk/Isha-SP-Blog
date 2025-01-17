@@ -10,6 +10,36 @@ import CommentSection from "../components/commentsSection/CommentSection";
 import { getAuth } from "firebase/auth";
 import dayjs from "dayjs";
 import LazyLoad from "../components/common/LazyLoad";
+import Zoom from "react-medium-image-zoom";
+import "react-medium-image-zoom/dist/styles.css";
+
+const ImageModal = ({ isOpen, onClose, imageUrl }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80'
+      onClick={onClose}
+    >
+      <div className='relative'>
+        <Zoom>
+          <img
+            src={imageUrl}
+            alt='Modal Content'
+            className='max-h-[90vh] max-w-[90vw] rounded-lg'
+          />
+        </Zoom>
+        <button
+          className='absolute right-3 top-3 text-white'
+          onClick={onClose}
+          title='Close'
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const SingleArticle = () => {
   const auth = getAuth();
@@ -17,6 +47,8 @@ const SingleArticle = () => {
   const [loading, setLoading] = useState(true);
   const params = useParams();
   const { categoryName, articleId } = params;
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,6 +92,11 @@ const SingleArticle = () => {
     "YYYY-MM-DD"
   );
 
+  const handleImageClick = (imageUrl) => {
+    setSelectedImage(imageUrl);
+    setIsModalOpen(true);
+  };
+
   if (loading) {
     return <Loader />;
   }
@@ -76,11 +113,14 @@ const SingleArticle = () => {
         <>
           <div className='mx-auto mt-14 w-[90%] lg:w-[60%]'>
             <LazyLoad
-              classes={"rounded-lg"}
+              classes={"rounded-lg cursor-pointer"}
               image={
                 blogData?.data?.imageUrl
                   ? blogData?.data?.imageUrl
                   : fallBackImage
+              }
+              onClick={() =>
+                handleImageClick(blogData?.data?.imageUrl || fallBackImage)
               }
             />
             <div className='mt-5 flex items-center justify-between'>
@@ -180,6 +220,12 @@ const SingleArticle = () => {
             })}
         </div>
       </div>
+
+      <ImageModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        imageUrl={selectedImage}
+      />
     </div>
   );
 };
