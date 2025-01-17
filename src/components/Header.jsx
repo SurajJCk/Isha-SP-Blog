@@ -144,7 +144,7 @@ const Header = () => {
           {authenticated && (
             <li
               className={`${styles.li} ${
-                location.pathname === `/>myblogs/${auth.currentUser.uid}` &&
+                location.pathname === `/myblogs/${auth.currentUser.uid}` &&
                 "highlight"
               } `}
             >
@@ -160,6 +160,17 @@ const Header = () => {
               } `}
             >
               <Link to='/write'>Write</Link>
+            </li>
+          )}
+
+          {/* Profile Link */}
+          {authenticated && (
+            <li
+              className={`${styles.li} ${
+                location.pathname === "/profile" && "highlight"
+              } `}
+            >
+              <Link to='/profile'>Profile</Link>
             </li>
           )}
 

@@ -16,6 +16,7 @@ import EditArticle from "./pages/EditArticle";
 import SearchResults from "./pages/SearchResults";
 import AdminRoute from "./components/AdminRoute";
 import AdminDashboard from "./pages/AdminDashboard";
+import Profile from "./pages/Profile";
 
 const App = () => {
   /* 
@@ -34,6 +35,7 @@ const App = () => {
           <Route element={<PrivateRoute />}>
             <Route path='/myBlogs/:userId' element={<MyBlogs />} />
             <Route path='/write' element={<WriteBlog />} />
+            <Route path='/profile' element={<Profile />} />
           </Route>
           {/* Admin Routes */}
           <Route element={<AdminRoute />}>

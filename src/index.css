@@ -119,14 +119,16 @@ header ul li:hover::after {
   font-size: 17px;
   cursor: text;
   top: 20px;
+  bottom: 10px;
 }
 
 .form__label {
   position: absolute;
-  top: 0;
+  top: -20px;
+  left: 0;
   display: block;
   transition: 0.2s;
-  font-size: 17px;
+  font-size: 14px;
   color: #9b9b9b;
   pointer-events: none;
 }

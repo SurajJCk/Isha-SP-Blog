@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { getAuth } from "firebase/auth";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-// import { getDownloadURL, getStorage, ref, uploadBytesResumable } from "firebase/storage"
 import { db } from "../config/firebase";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -15,16 +14,17 @@ const WriteBlog = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  // const [progress, setProgress] = useState(0);
   const [blogData, setBlogData] = useState({
+    title: "",
+    content: "",
     description: "",
     category: "",
-    // image: {},
+    authorName: "",
   });
-  const { title, content } = blogData;
+
+  const { title, content, authorName } = blogData;
   const [category, setCategory] = useState("");
 
-  // To get category
   const selectCategory = (option) => {
     setCategory(option);
     setBlogData({
@@ -33,7 +33,6 @@ const WriteBlog = () => {
     });
   };
 
-  // Add details to blogData state
   const onChangeHandler = (e) => {
     if (e.target.id !== "category") {
       setBlogData({
@@ -41,21 +40,8 @@ const WriteBlog = () => {
         [e.target.id]: e.target.value,
       });
     }
-    console.log(blogData);
-
-    /*     if(e.target.files){
-      setBlogData({
-        ...blogData,
-        image: e.target.files,
-      });
-    } */
-    // console.log(blogData);
   };
 
-  const getData = () => {
-    console.log(blogData);
-  };
-  // Submit details to firebase
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -66,12 +52,11 @@ const WriteBlog = () => {
         uuid: uuidv4(),
         timestamp: serverTimestamp(),
         author: {
-          name: auth.currentUser.displayName,
+          name: authorName || auth.currentUser.displayName,
           id: auth.currentUser.uid,
         },
         blogData,
       });
-      console.log(data);
       navigate(`/myBlogs/${auth.currentUser.uid}`);
       setLoading(false);
       toast.success("Post published");
@@ -89,6 +74,7 @@ const WriteBlog = () => {
   if (loading) {
     return <Loader />;
   }
+
   return (
     <>
       <h1 className='my-14 bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text py-4 text-center font-raleway text-5xl font-extrabold text-transparent'>
@@ -99,9 +85,24 @@ const WriteBlog = () => {
         className='mx-auto mt-[60px] w-full max-w-3xl lg:max-w-4xl'
       >
         <div className='mb-4 w-full rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-700'>
+          <div className='rounded-t-lg bg-white px-4 py-2 dark:bg-gray-800'>
+            <label htmlFor='authorName' className='sr-only'>
+              Author Name
+            </label>
+            <input
+              id='authorName'
+              onChange={onChangeHandler}
+              value={authorName}
+              name='authorName'
+              type='text'
+              className='block w-full border-0 bg-white px-0 text-lg text-gray-800 focus:ring-0 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400'
+              placeholder='Your Name (optional)'
+            />
+            <hr className='my-2' />
+          </div>
+
           <div className='flex items-center justify-between border-b px-3 py-2 dark:border-gray-600'>
             <div className='flex flex-wrap items-center divide-gray-200 dark:divide-gray-600 sm:divide-x'>
-              {/* SVG's */}
               <div className='flex items-center space-x-1 sm:pr-4'>
                 <button
                   type='button'
@@ -286,7 +287,7 @@ const WriteBlog = () => {
                 name='title'
                 type='text'
                 required
-                className='block w-full border-0 bg-white px-0 text-lg text-gray-800 focus:ring-0 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 '
+                className='block w-full border-0 bg-white px-0 text-lg text-gray-800 focus:ring-0 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400'
                 placeholder='Title'
               />
             </div>
@@ -304,15 +305,14 @@ const WriteBlog = () => {
         </div>
 
         {/* Categories */}
-        <div className=' mt-8 space-y-5'>
+        <div className='mt-8 space-y-5'>
           <div className='relative inline-block'>
             <button
               type='button'
-              className='flex  items-center rounded bg-gray-700 px-4
-                py-2 text-white hover:bg-gray-600 focus:outline-none'
+              className='flex items-center rounded bg-gray-700 px-4 py-2 text-white hover:bg-gray-600 focus:outline-none'
               onClick={toggleMenu}
             >
-              {category ? `${category}` : " Select a category"}
+              {category ? `${category}` : "Select a category"}
 
               <svg
                 className='ml-2 h-4 w-4'
@@ -334,7 +334,7 @@ const WriteBlog = () => {
               <div className='absolute z-10 mt-3 w-44 divide-y divide-gray-100 rounded-lg bg-white shadow dark:bg-gray-700'>
                 <ul className='py-2 text-sm text-gray-700 dark:text-gray-200'>
                   <li
-                    onClick={() => selectCategory("s")}
+                    onClick={() => selectCategory("seva")}
                     id='category'
                     value='seva'
                     className='block cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white'
@@ -349,7 +349,6 @@ const WriteBlog = () => {
                   >
                     <a>Dhyanalinga</a>
                   </li>
-
                   <li
                     onClick={() => selectCategory("linga bhairavi")}
                     id='category'
@@ -358,7 +357,6 @@ const WriteBlog = () => {
                   >
                     <a>Linga Bhairavi</a>
                   </li>
-
                   <li
                     onClick={() => selectCategory("spiritual Growth")}
                     id='category'
@@ -367,16 +365,14 @@ const WriteBlog = () => {
                   >
                     <a>Spiritual Growth</a>
                   </li>
-
                   <li
                     onClick={() => selectCategory("program experience")}
                     id='category'
                     value='program experience'
                     className='block cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white'
                   >
-                    <a>program experience</a>
+                    <a>Program Experience</a>
                   </li>
-
                   <li
                     onClick={() => selectCategory("yoga")}
                     id='category'
@@ -385,7 +381,6 @@ const WriteBlog = () => {
                   >
                     <a>Yoga</a>
                   </li>
-
                   <li
                     onClick={() => selectCategory("sadhana")}
                     id='category'
@@ -399,6 +394,7 @@ const WriteBlog = () => {
             )}
           </div>
         </div>
+
         <div style={{ height: "360px" }}>
           <BlogEditor
             blogData={blogData}
@@ -406,8 +402,9 @@ const WriteBlog = () => {
             onchangeHandler={onChangeHandler}
           />
         </div>
+
         <hr className='mt-8 border-gray-600' />
-        <div className='mx-auto my-8 w-full max-w-[50%] lg:max-w-[40%] '>
+        <div className='mx-auto my-8 w-full max-w-[50%] lg:max-w-[40%]'>
           <button
             type='submit'
             className='w-full cursor-pointer rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 py-3 font-semibold text-white transition duration-200 ease-in-out active:scale-90'
