@@ -1,176 +1,108 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../config/firebase";
 import { toast } from "react-hot-toast";
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from "firebase/auth";
-import { AiFillGoogleCircle } from "react-icons/ai";
-import { BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
-import { Balancer } from "react-wrap-balancer";
-import Loader from "../components/Loader";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../config/firebase";
+import OAuth from "../components/OAuth";
 
 const SignIn = () => {
-  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
-  const { email, password } = formData;
   const navigate = useNavigate();
-  const auth = getAuth();
 
-  const onChange = (e) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      [e.target.id]: e.target.value,
-    }));
-  };
-
-  const onSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const { email, password } = formData;
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
       if (userCredential.user) {
+        toast.success("Successfully signed in!");
         navigate("/");
-        toast.success("Signed in successfully");
       }
     } catch (error) {
-      toast.error("Bad user credentials");
+      console.error("Error signing in:", error);
+      toast.error(error.message || "Failed to sign in");
     } finally {
       setLoading(false);
     }
   };
 
-  const provider = new GoogleAuthProvider();
-  const signInWithGoogle = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      // Check if user is admin
-      const isAdmin = user.email === "codewithsjc@gmail.com";
-
-      // Add admin status to user profile
-      await setDoc(
-        doc(db, "users", user.uid),
-        {
-          name: user.displayName,
-          email: user.email,
-          isAdmin: isAdmin,
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      // Navigate to admin dashboard if admin, otherwise home
-      if (isAdmin) {
-        navigate("/admin");
-      } else {
-        navigate("/");
-      }
-      toast.success("Signed in with Google");
-    } catch (error) {
-      console.error(error);
-      toast.error("Unable to sign in with Google");
-    }
+  const handleChange = (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.id]: e.target.value,
+    }));
   };
 
-  if (loading) {
-    return <Loader />;
-  }
-
   return (
-    <div className='mx-auto max-w-7xl'>
-      <h1 className='bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text py-8 text-center font-raleway text-4xl font-extrabold text-transparent md:text-5xl'>
-        <Balancer>Welcome Back</Balancer>
-      </h1>
-      <div className='mx-auto max-w-lg'>
-        <form
-          onSubmit={onSubmit}
-          className='flex flex-col gap-4 rounded-lg bg-white p-7 shadow-lg'
-        >
-          <input
-            type='email'
-            className='w-full rounded-lg border px-4 py-3 text-lg outline-none transition duration-150 ease-in-out hover:shadow-md'
-            placeholder='Email address'
-            id='email'
-            value={email}
-            onChange={onChange}
-          />
-
-          <div className='relative'>
-            <input
-              type={showPassword ? "text" : "password"}
-              className='w-full rounded-lg border px-4 py-3 text-lg outline-none transition duration-150 ease-in-out hover:shadow-md'
-              placeholder='Password'
-              id='password'
-              value={password}
-              onChange={onChange}
-            />
-            {showPassword ? (
-              <BsEyeSlashFill
-                className='absolute right-3 top-4 cursor-pointer text-xl'
-                onClick={() => setShowPassword((prevState) => !prevState)}
-              />
-            ) : (
-              <BsEyeFill
-                className='absolute right-3 top-4 cursor-pointer text-xl'
-                onClick={() => setShowPassword((prevState) => !prevState)}
-              />
-            )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 py-6 flex flex-col justify-center sm:py-12">
+      <div className="relative py-3 sm:max-w-xl sm:mx-auto">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-300 to-blue-600 shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl"></div>
+        <div className="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
+          <div className="max-w-md mx-auto">
+            <div>
+              <h1 className="text-2xl font-semibold text-center mb-8">Welcome Back!</h1>
+            </div>
+            <form onSubmit={handleSubmit} className="divide-y divide-gray-200">
+              <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
+                <div className="relative">
+                  <input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="peer h-10 w-full border-b-2 border-gray-300 text-gray-900 focus:outline-none focus:border-rose-600"
+                    placeholder="Email address"
+                    required
+                  />
+                </div>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="peer h-10 w-full border-b-2 border-gray-300 text-gray-900 focus:outline-none focus:border-rose-600"
+                    placeholder="Password"
+                    required
+                  />
+                </div>
+                <div className="relative">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-blue-500 text-white rounded-md px-4 py-2 w-full hover:bg-blue-600 transition-all duration-200 disabled:opacity-70"
+                  >
+                    {loading ? "Signing in..." : "Sign In"}
+                  </button>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm">
+                    Don't have an account?{" "}
+                    <Link to="/sign-up" className="text-blue-500 hover:text-blue-600">
+                      Sign up here
+                    </Link>
+                  </p>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                  </div>
+                </div>
+                <OAuth />
+              </div>
+            </form>
           </div>
-
-          <div className='flex justify-between text-sm'>
-            <p>
-              Don't have an account?{" "}
-              <Link
-                to='/sign-up'
-                className='font-semibold text-blue-600 hover:text-blue-800'
-              >
-                Register
-              </Link>
-            </p>
-            <Link
-              to='/forgot-password'
-              className='font-semibold text-blue-600 hover:text-blue-800'
-            >
-              Forgot password?
-            </Link>
-          </div>
-
-          <button
-            type='submit'
-            className='rounded-lg bg-blue-600 py-3 text-lg font-semibold text-white transition duration-150 ease-in-out hover:bg-blue-700'
-          >
-            Sign in
-          </button>
-
-          <div className='flex items-center'>
-            <div className='flex-grow border-t'></div>
-            <span className='mx-4 text-gray-500'>OR</span>
-            <div className='flex-grow border-t'></div>
-          </div>
-
-          <button
-            type='button'
-            onClick={signInWithGoogle}
-            className='flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white py-3 text-lg font-semibold text-gray-700 transition duration-150 ease-in-out hover:bg-gray-50 hover:shadow-md'
-          >
-            <AiFillGoogleCircle className='text-2xl text-red-500' />
-            <span>Sign in with Google</span>
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   );

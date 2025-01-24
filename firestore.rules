@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /blogs/{blogId} {
+      // Allow reading blogs by anyone
+      allow read: if true;
+      
+      // Allow creation only by authenticated users
+      allow create: if request.auth != null;
+      
+      // Allow updates only for likes and dislikes by authenticated users
+      allow update: if request.auth != null && 
+        (
+          // Only allow updating likes and dislikes fields
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['likes', 'dislikes']) ||
+          // Or if the user is updating their own blog
+          resource.data.userId == request.auth.uid
+        );
+      
+      // Allow deletion only by the blog owner
+      allow delete: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+  }
+}

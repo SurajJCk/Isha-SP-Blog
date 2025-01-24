@@ -1,95 +1,124 @@
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
-  limit,
-  orderBy,
   query,
   where,
-  addDoc,
-  deleteDoc,
   getDoc,
+  updateDoc,
+  addDoc,
+  limit,
+  orderBy,
 } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
-import { db } from "../config/firebase";
-import { useParams } from "react-router-dom";
-import { getAuth } from "firebase/auth";
+import { db, auth } from "../config/firebase";
+import { toast } from "react-hot-toast";
 import Card from "../components/Card";
-import Loader from "../components/Loader";
 import CardSkeleton from "../components/skeleton/CardSkeleton";
+import Loader from "../components/Loader";
 
 const Category = () => {
   const [blogData, setBlogData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
   const params = useParams();
-  const auth = getAuth();
+  const navigate = useNavigate();
 
   // Check if user is admin
   useEffect(() => {
     const checkAdminStatus = async () => {
-      if (auth.currentUser) {
-        const userRef = doc(db, "users", auth.currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        setIsAdmin(userSnap.data()?.isAdmin || false);
+      if (currentUser) {
+        const adminRef = collection(db, "admin");
+        const q = query(adminRef, where("id", "==", currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        setIsAdmin(!querySnapshot.empty);
       }
     };
     checkAdminStatus();
-  }, [auth.currentUser]);
+  }, [currentUser]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const categoriesRef = collection(db, "categories");
-        const querySnap = await getDocs(categoriesRef);
-        const categoryList = [];
-        querySnap.forEach((doc) => {
-          categoryList.push({
-            id: doc.id,
-            name: doc.data().name,
-          });
+        const categoryRef = collection(db, "categories");
+        const q = query(categoryRef, orderBy("timestamp", "desc"));
+        const querySnapshot = await getDocs(q);
+        const categoryData = [];
+        querySnapshot.forEach((doc) => {
+          categoryData.push({ id: doc.id, ...doc.data() });
         });
-        setCategories(categoryList);
+        setCategories(categoryData);
       } catch (error) {
         console.error("Error fetching categories:", error);
+        toast.error("Failed to load categories");
       }
     };
     fetchCategories();
   }, []);
 
-  // Fetch blog posts for selected category
+  // Fetch blogs by category
   useEffect(() => {
     const fetchData = async () => {
+      if (!params.categoryName) return;
+
       setLoading(true);
       try {
         const blogRef = collection(db, "blogs");
         const q = query(
           blogRef,
-          where(`blogData.category`, "==", params.categoryName),
+          where("category", "==", params.categoryName),
           orderBy("timestamp", "desc"),
           limit(6)
         );
-        const querySnap = await getDocs(q);
-        const blogs = [];
-        querySnap.forEach((query) => {
-          blogs.push({
-            id: query.id,
-            data: query.data(),
-          });
+        const docSnap = await getDocs(q);
+        const blogs = docSnap.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            data: {
+              title: data.title,
+              content: data.content,
+              category: data.category,
+              imageUrl: data.imageUrl,
+              timestamp: data.timestamp,
+            },
+            likeCount: data.likes?.count || 0,
+            dislikeCount: data.dislikes?.count || 0,
+            userAction: currentUser
+              ? data.likes?.userIds?.includes(currentUser.uid)
+                ? "like"
+                : data.dislikes?.userIds?.includes(currentUser.uid)
+                ? "dislike"
+                : null
+              : null,
+          };
         });
         setBlogData(blogs);
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching blogs:", error);
-      } finally {
+        toast.error("Failed to load articles");
         setLoading(false);
       }
     };
     fetchData();
-  }, [params.categoryName]);
+  }, [params.categoryName, currentUser]);
 
   // Add new category
   const handleAddCategory = async (e) => {
@@ -100,115 +129,183 @@ const Category = () => {
     }
 
     try {
-      const categoriesRef = collection(db, "categories");
-      // Check if category already exists
-      const q = query(categoriesRef, where("name", "==", newCategory.trim()));
-      const querySnap = await getDocs(q);
-
-      if (!querySnap.empty) {
-        setError("Category already exists");
-        return;
-      }
-
-      await addDoc(categoriesRef, {
-        name: newCategory.trim(),
-        createdAt: new Date(),
-        createdBy: auth.currentUser.uid,
+      const categoryRef = collection(db, "categories");
+      await addDoc(categoryRef, {
+        name: newCategory,
+        timestamp: new Date(),
       });
-
-      setCategories([...categories, { name: newCategory.trim() }]);
+      toast.success("Category added successfully");
       setNewCategory("");
       setError("");
     } catch (error) {
-      setError("Error adding category");
       console.error("Error adding category:", error);
+      toast.error("Failed to add category");
     }
   };
 
-  // Delete category (admin only)
-  const handleDeleteCategory = async (categoryId) => {
-    if (!isAdmin) return;
+  // Delete category
+  const handleDeleteCategory = async (id) => {
+    try {
+      await deleteDoc(doc(db, "categories", id));
+      toast.success("Category deleted successfully");
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast.error("Failed to delete category");
+    }
+  };
+
+  const handleVote = async (blogId, action) => {
+    if (!currentUser) {
+      toast.error("Please sign in to vote");
+      return;
+    }
 
     try {
-      // Check if category has any blogs
-      const blogRef = collection(db, "blogs");
-      const q = query(blogRef, where("blogData.category", "==", categoryId));
-      const querySnap = await getDocs(q);
+      const blogIndex = blogData.findIndex((blog) => blog.id === blogId);
+      if (blogIndex === -1) return;
 
-      if (!querySnap.empty) {
-        setError("Cannot delete category with existing blogs");
+      const blog = blogData[blogIndex];
+      const blogRef = doc(db, "blogs", blogId);
+      
+      // First, get the current blog data
+      const blogDoc = await getDoc(blogRef);
+      if (!blogDoc.exists()) {
+        toast.error("Blog not found");
         return;
       }
+      
+      const currentData = blogDoc.data();
+      let updates = {};
 
-      await deleteDoc(doc(db, "categories", categoryId));
-      setCategories(categories.filter((cat) => cat.id !== categoryId));
+      if (blog.userAction === action) {
+        // User is un-voting
+        if (action === 'like') {
+          updates.likes = {
+            userIds: Array.isArray(currentData.likes?.userIds) 
+              ? currentData.likes.userIds.filter(id => id !== currentUser.uid)
+              : [],
+            count: Math.max((currentData.likes?.count || 1) - 1, 0)
+          };
+        } else {
+          updates.dislikes = {
+            userIds: Array.isArray(currentData.dislikes?.userIds)
+              ? currentData.dislikes.userIds.filter(id => id !== currentUser.uid)
+              : [],
+            count: Math.max((currentData.dislikes?.count || 1) - 1, 0)
+          };
+        }
+
+        // Update local state
+        const updatedBlogs = [...blogData];
+        updatedBlogs[blogIndex] = {
+          ...blog,
+          [`${action}Count`]: Math.max(blog[`${action}Count`] - 1, 0),
+          userAction: null,
+        };
+        setBlogData(updatedBlogs);
+      } else {
+        // User is voting or changing vote
+        if (action === 'like') {
+          updates.likes = {
+            userIds: Array.isArray(currentData.likes?.userIds)
+              ? [...new Set([...currentData.likes.userIds, currentUser.uid])]
+              : [currentUser.uid],
+            count: (currentData.likes?.count || 0) + 1
+          };
+          
+          // If user had previously disliked, remove dislike
+          if (blog.userAction === 'dislike') {
+            updates.dislikes = {
+              userIds: Array.isArray(currentData.dislikes?.userIds)
+                ? currentData.dislikes.userIds.filter(id => id !== currentUser.uid)
+                : [],
+              count: Math.max((currentData.dislikes?.count || 1) - 1, 0)
+            };
+          }
+        } else {
+          updates.dislikes = {
+            userIds: Array.isArray(currentData.dislikes?.userIds)
+              ? [...new Set([...currentData.dislikes.userIds, currentUser.uid])]
+              : [currentUser.uid],
+            count: (currentData.dislikes?.count || 0) + 1
+          };
+          
+          // If user had previously liked, remove like
+          if (blog.userAction === 'like') {
+            updates.likes = {
+              userIds: Array.isArray(currentData.likes?.userIds)
+                ? currentData.likes.userIds.filter(id => id !== currentUser.uid)
+                : [],
+              count: Math.max((currentData.likes?.count || 1) - 1, 0)
+            };
+          }
+        }
+
+        // Update local state
+        const updatedBlogs = [...blogData];
+        updatedBlogs[blogIndex] = {
+          ...blog,
+          [`${action}Count`]: blog[`${action}Count`] + 1,
+          [`${action === "like" ? "dislikeCount" : "likeCount"}`]:
+            blog.userAction
+              ? Math.max(blog[`${action === "like" ? "dislikeCount" : "likeCount"}`] - 1, 0)
+              : blog[`${action === "like" ? "dislikeCount" : "likeCount"}`],
+          userAction: action,
+        };
+        setBlogData(updatedBlogs);
+      }
+
+      await updateDoc(blogRef, updates);
     } catch (error) {
-      setError("Error deleting category");
-      console.error("Error deleting category:", error);
+      console.error("Error updating vote:", error);
+      toast.error("Failed to update vote");
     }
   };
 
   return (
     <div className='mx-auto max-w-7xl'>
       {/* Category Management Section */}
-      {auth.currentUser && (
-        <div className='mb-8 rounded-lg bg-white p-4 shadow'>
+      {isAdmin && (
+        <div className='my-8 rounded-lg bg-white p-6 shadow-lg'>
           <h2 className='mb-4 text-2xl font-bold'>Manage Categories</h2>
-          <form onSubmit={handleAddCategory} className='mb-4 flex gap-4'>
+          <form onSubmit={handleAddCategory} className='mb-4'>
             <input
               type='text'
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
-              placeholder='New category name'
-              className='flex-1 rounded border p-2'
+              placeholder='Enter new category'
+              className='mr-2 rounded border p-2'
             />
             <button
               type='submit'
-              className='rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700'
+              className='rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600'
             >
               Add Category
             </button>
+            {error && <p className='mt-2 text-red-500'>{error}</p>}
           </form>
-          {error && <p className='mb-4 text-red-500'>{error}</p>}
-
-          <div className='grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'>
+          <div className='mt-4'>
             {categories.map((category) => (
               <div
                 key={category.id}
-                className='flex items-center justify-between rounded bg-gray-100 p-2'
+                className='mb-2 flex items-center justify-between'
               >
                 <span>{category.name}</span>
-                {isAdmin && (
-                  <button
-                    onClick={() => handleDeleteCategory(category.id)}
-                    className='text-red-600 hover:text-red-800'
-                  >
-                    <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      className='h-5 w-5'
-                      viewBox='0 0 20 20'
-                      fill='currentColor'
-                    >
-                      <path
-                        fillRule='evenodd'
-                        d='M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z'
-                        clipRule='evenodd'
-                      />
-                    </svg>
-                  </button>
-                )}
+                <button
+                  onClick={() => handleDeleteCategory(category.id)}
+                  className='text-red-500 hover:text-red-700'
+                >
+                  Delete
+                </button>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Existing Category Display Section */}
-      <h1 className='my-12 bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-center text-5xl font-bold text-transparent'>
-        Articles related to:{" "}
-        <span className='bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text font-extrabold capitalize text-transparent'>
-          {params.categoryName}
-        </span>
+      {/* Articles Section */}
+      <h1 className='my-12 text-center text-4xl font-extrabold'>
+        {params.categoryName} Articles
       </h1>
 
       <div className='mx-auto mt-12 grid w-[80%] grid-cols-1 gap-5 md:w-[95%] md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'>
@@ -217,12 +314,20 @@ const Category = () => {
             <CardSkeleton key={index} />
           ))
         ) : blogData && blogData.length > 0 ? (
-          blogData.map((blog, index) => (
-            <Card key={blog.id} id={blog.id} blog={blog.data} />
+          blogData.map((blog) => (
+            <Card
+              key={blog.id}
+              id={blog.id}
+              blog={blog.data}
+              likeCount={blog.likeCount}
+              dislikeCount={blog.dislikeCount}
+              userAction={blog.userAction}
+              onVote={handleVote}
+            />
           ))
         ) : (
           <p className='mt-24 text-center text-4xl font-extrabold'>
-            No Articles found
+            No articles found in this category
           </p>
         )}
       </div>

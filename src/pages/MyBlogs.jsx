@@ -1,83 +1,203 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   getDocs,
-  limit,
-  orderBy,
   query,
   where,
+  getDoc,
+  updateDoc,
 } from "firebase/firestore";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { db } from "../config/firebase";
-import { getAuth } from "firebase/auth";
-import Loader from "../components/Loader";
-import Card from "../components/Card";
-import Swal from "sweetalert2";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+import Card from "../components/Card";
 import CardSkeleton from "../components/skeleton/CardSkeleton";
+import { HiOutlineTrash } from "react-icons/hi";
 
 const MyBlogs = () => {
+  const [userBlog, setUserBlog] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
   const auth = getAuth();
-  const [loading, setLoading] = useState(false);
-  const [userBlog, setUserBlog] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    setLoading(true);
-    const fethUserData = async () => {
-      const blogRef = collection(db, "blogs");
-      // if query is under something then it should be written inside the backticks
-      const q = query(
-        blogRef,
-        where(`author.id`, "==", auth.currentUser.uid),
-        orderBy("timestamp", "desc")
-      );
-      const docSnap = await getDocs(q);
-      let blogs = [];
-      docSnap.forEach((doc) => {
-        blogs.push({
-          id: doc.id,
-          data: doc.data(),
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setCurrentUser(user);
+      } else {
+        navigate("/login");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth, navigate]);
+
+  useEffect(() => {
+    const fetchUserBlogs = async () => {
+      if (!currentUser) return;
+
+      try {
+        const blogRef = collection(db, "blogs");
+        const q = query(blogRef, where("userId", "==", currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        const blogs = querySnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            data: {
+              title: data.title,
+              content: data.content,
+              category: data.category,
+              imageUrl: data.imageUrl,
+              timestamp: data.timestamp,
+            },
+            likeCount: data.likes?.count || 0,
+            dislikeCount: data.dislikes?.count || 0,
+            userAction: data.likes?.userIds?.includes(currentUser.uid)
+              ? "like"
+              : data.dislikes?.userIds?.includes(currentUser.uid)
+              ? "dislike"
+              : null,
+          };
         });
-      });
-      setUserBlog(blogs);
-      setLoading(false);
+        setUserBlog(blogs);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching user blogs:", error);
+        toast.error("Unable to load your articles");
+        setLoading(false);
+      }
     };
-    fethUserData();
-  }, []);
+
+    fetchUserBlogs();
+  }, [currentUser]);
+
+  const handleVote = async (blogId, action) => {
+    if (!currentUser) {
+      toast.error("Please sign in to vote");
+      return;
+    }
+
+    try {
+      const blogIndex = userBlog.findIndex((blog) => blog.id === blogId);
+      if (blogIndex === -1) return;
+
+      const blog = userBlog[blogIndex];
+      const blogRef = doc(db, "blogs", blogId);
+      
+      // First, get the current blog data
+      const blogDoc = await getDoc(blogRef);
+      if (!blogDoc.exists()) {
+        toast.error("Blog not found");
+        return;
+      }
+      
+      const currentData = blogDoc.data();
+      let updates = {};
+
+      if (blog.userAction === action) {
+        // User is un-voting
+        if (action === 'like') {
+          updates.likes = {
+            userIds: Array.isArray(currentData.likes?.userIds) 
+              ? currentData.likes.userIds.filter(id => id !== currentUser.uid)
+              : [],
+            count: Math.max((currentData.likes?.count || 1) - 1, 0)
+          };
+        } else {
+          updates.dislikes = {
+            userIds: Array.isArray(currentData.dislikes?.userIds)
+              ? currentData.dislikes.userIds.filter(id => id !== currentUser.uid)
+              : [],
+            count: Math.max((currentData.dislikes?.count || 1) - 1, 0)
+          };
+        }
+
+        // Update local state
+        const updatedBlogs = [...userBlog];
+        updatedBlogs[blogIndex] = {
+          ...blog,
+          [`${action}Count`]: Math.max(blog[`${action}Count`] - 1, 0),
+          userAction: null,
+        };
+        setUserBlog(updatedBlogs);
+      } else {
+        // User is voting or changing vote
+        if (action === 'like') {
+          updates.likes = {
+            userIds: Array.isArray(currentData.likes?.userIds)
+              ? [...new Set([...currentData.likes.userIds, currentUser.uid])]
+              : [currentUser.uid],
+            count: (currentData.likes?.count || 0) + 1
+          };
+          
+          // If user had previously disliked, remove dislike
+          if (blog.userAction === 'dislike') {
+            updates.dislikes = {
+              userIds: Array.isArray(currentData.dislikes?.userIds)
+                ? currentData.dislikes.userIds.filter(id => id !== currentUser.uid)
+                : [],
+              count: Math.max((currentData.dislikes?.count || 1) - 1, 0)
+            };
+          }
+        } else {
+          updates.dislikes = {
+            userIds: Array.isArray(currentData.dislikes?.userIds)
+              ? [...new Set([...currentData.dislikes.userIds, currentUser.uid])]
+              : [currentUser.uid],
+            count: (currentData.dislikes?.count || 0) + 1
+          };
+          
+          // If user had previously liked, remove like
+          if (blog.userAction === 'like') {
+            updates.likes = {
+              userIds: Array.isArray(currentData.likes?.userIds)
+                ? currentData.likes.userIds.filter(id => id !== currentUser.uid)
+                : [],
+              count: Math.max((currentData.likes?.count || 1) - 1, 0)
+            };
+          }
+        }
+
+        // Update local state
+        const updatedBlogs = [...userBlog];
+        updatedBlogs[blogIndex] = {
+          ...blog,
+          [`${action}Count`]: blog[`${action}Count`] + 1,
+          [`${action === "like" ? "dislikeCount" : "likeCount"}`]:
+            blog.userAction
+              ? Math.max(blog[`${action === "like" ? "dislikeCount" : "likeCount"}`] - 1, 0)
+              : blog[`${action === "like" ? "dislikeCount" : "likeCount"}`],
+          userAction: action,
+        };
+        setUserBlog(updatedBlogs);
+      }
+
+      await updateDoc(blogRef, updates);
+    } catch (error) {
+      console.error("Error updating vote:", error);
+      toast.error("Failed to update vote");
+    }
+  };
 
   const delHandler = async (id) => {
-    const showConfirmation = () => {
-      return Swal.fire({
-        title: "Confirm Delete?",
-        text: "Are you sure you want to delete this post?",
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Yes, delete it",
-        cancelButtonText: "Cancel",
-      });
-    };
-
-    const result = await showConfirmation();
-    if (auth.currentUser && result.isConfirmed) {
-      try {
-        const ref = doc(db, "blogs", id);
-        await deleteDoc(ref);
-        setUserBlog(userBlog.filter((blog) => blog?.id !== id));
-        toast.success("Post deleted");
-      } catch (error) {
-        console.log(error.message);
-        toast.error("Post not deleted");
-      }
+    try {
+      await deleteDoc(doc(db, "blogs", id));
+      toast.success("Article deleted successfully");
+      setUserBlog((prev) => prev.filter((blog) => blog.id !== id));
+    } catch (error) {
+      console.error("Error deleting blog:", error);
+      toast.error("Failed to delete article");
     }
   };
 
   return (
     <div className='mx-auto max-w-7xl'>
-      <h1 className='my-12 bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text py-5 text-center text-5xl font-extrabold text-transparent'>
-        {/* from-red-500 to-orange-500 bg-clip-text text-transparent */}
+      <h1 className='my-12 text-center text-4xl font-extrabold'>
         My Articles
       </h1>
 
@@ -87,11 +207,15 @@ const MyBlogs = () => {
             <CardSkeleton key={index} />
           ))
         ) : userBlog && userBlog.length > 0 ? (
-          userBlog.map((blog, index) => (
+          userBlog.map((blog) => (
             <Card
-              key={index}
-              id={blog?.id}
-              blog={blog?.data}
+              key={blog.id}
+              id={blog.id}
+              blog={blog.data}
+              likeCount={blog.likeCount}
+              dislikeCount={blog.dislikeCount}
+              userAction={blog.userAction}
+              onVote={handleVote}
               delHandler={delHandler}
             />
           ))

@@ -1,12 +1,12 @@
-import { getAuth } from "firebase/auth";
+import { auth } from "../config/firebase";
 import parse from "html-react-parser";
 import { useLocation, useNavigate } from "react-router-dom";
 import LazyLoad from "./common/LazyLoad";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { toast } from "react-hot-toast";
 
-const Card = ({ id, blog, delHandler }) => {
-  const auth = getAuth();
+const Card = ({ id, blog, userAction, likeCount, dislikeCount, onVote, onDelete }) => {
   const location = useLocation();
   const navigate = useNavigate();
   dayjs.extend(relativeTime);
@@ -17,10 +17,10 @@ const Card = ({ id, blog, delHandler }) => {
 
   const handleShare = async (e) => {
     e.stopPropagation();
-    const shareUrl = `${window.location.origin}/category/${blog.blogData.category}/${id}`;
+    const shareUrl = `${window.location.origin}/category/${blog?.category}/${id}`;
     const shareData = {
-      title: blog?.blogData?.title,
-      text: `Check out this article: ${blog?.blogData?.title}`,
+      title: blog?.title || "",
+      text: `Check out this article: ${blog?.title || ""}`,
       url: shareUrl,
     };
 
@@ -29,20 +29,30 @@ const Card = ({ id, blog, delHandler }) => {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(shareUrl);
-        alert("Link copied to clipboard!");
+        toast.success("Link copied to clipboard!");
       }
     } catch (error) {
       console.error("Error sharing:", error);
     }
   };
 
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(id);
+    }
+  };
+
   const fallBackImage =
     "https://img.freepik.com/free-photo/digital-painting-mountain-with-colorful-tree-foreground_1340-25699.jpg?w=900&t=st=1686204841~exp=1686205441~hmac=16586e1f1340a9b9a774cd9538d3a9fc9fcd78acf00fbe2405160352f137faa4";
+
+  // Safely parse content or return empty string
+  const parsedContent = blog?.content ? parse(blog.content) : "";
 
   return (
     <div>
       <div
-        onClick={() => navigate(`/category/${blog.blogData.category}/${id}`)}
+        onClick={() => navigate(`/category/${blog?.category}/${id}`)}
         className='google__btn__shadow relative mx-auto my-2 max-w-sm overflow-hidden rounded-lg border border-gray-200 bg-white bg-gradient-to-r from-gray-700 via-gray-900 to-black shadow transition-all duration-200 ease-in-out hover:shadow-lg hover:shadow-sky-800 dark:border-gray-700 dark:bg-gray-800'
       >
         <a href='#' className='transition-all duration-300 ease-in-out'>
@@ -56,13 +66,37 @@ const Card = ({ id, blog, delHandler }) => {
         <div className='h-56 p-5 font-bold tracking-tight'>
           <a href='#'>
             <h2 className='mb-2 line-clamp-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white'>
-              {blog?.blogData?.title}
+              {blog?.title || "Untitled"}
             </h2>
           </a>
           <p className='mb-3 line-clamp-2 font-normal text-gray-700 dark:text-gray-400'>
-            {parse(blog?.blogData?.content)}
+            {parsedContent}
           </p>
           <div className='mt-6 flex items-center justify-between'>
+            <div className='flex items-center space-x-4'>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onVote(id, "like");
+                }}
+                className={`flex items-center ${
+                  userAction === "like" ? "text-blue-500" : ""
+                }`}
+              >
+                👍 <span className='ml-1'>{likeCount || 0}</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onVote(id, "dislike");
+                }}
+                className={`flex items-center ${
+                  userAction === "dislike" ? "text-red-500" : ""
+                }`}
+              >
+                👎 <span className='ml-1'>{dislikeCount || 0}</span>
+              </button>
+            </div>
             <button className='inline-flex items-center rounded-lg bg-blue-700 px-3 py-2 text-center text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300 active:scale-95 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800'>
               Read more
               <svg
@@ -80,7 +114,7 @@ const Card = ({ id, blog, delHandler }) => {
               </svg>
             </button>
             <span className='absolute right-2 top-[14.8rem] cursor-pointer rounded-lg bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-4 active:scale-95'>
-              {blog?.blogData?.category}
+              {blog?.category || "Uncategorized"}
             </span>
             <span className="active:scale-95' absolute left-2 top-[14.8rem] cursor-pointer rounded-lg bg-zinc-600 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-4">
               {blog?.timestamp
@@ -113,12 +147,12 @@ const Card = ({ id, blog, delHandler }) => {
               </span>
 
               {/* Delete and Edit icons - Only visible for authenticated users on specific pages */}
-              {auth?.currentUser &&
+              {auth.currentUser &&
                 location.pathname !== "/articles" &&
                 location.pathname !== "/" && (
                   <>
                     <span
-                      onClick={() => delHandler(id)}
+                      onClick={handleDelete}
                       className='cursor-pointer active:scale-95'
                     >
                       <svg
@@ -128,7 +162,7 @@ const Card = ({ id, blog, delHandler }) => {
                       >
                         <path
                           fillRule='evenodd'
-                          d='M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5.058l.347 9a.75.75 0 101.499-.058l-.346-9zm5.48.058a.75.75 0 10-1.498-.058l-.347 9a.75.75 0 001.5.058l.345-9z'
+                          d='M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5.058l.347 9a.75.75 0 001.499-.058l-.346-9zm5.48.058a.75.75 0 10-1.498-.058l-.347 9a.75.75 0 001.5.058l.345-9z'
                           clipRule='evenodd'
                         />
                       </svg>
