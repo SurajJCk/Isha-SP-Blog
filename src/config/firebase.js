@@ -1,14 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAnalytics } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
-import { 
-  getAuth, 
-  browserLocalPersistence, 
-  initializeAuth,
-  indexedDBLocalPersistence
-} from "firebase/auth";
+import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -24,16 +18,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with persistence
-const auth = initializeAuth(app, {
-  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
-});
+// Initialize Firebase services
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-// Firebase Services
-export const db = getFirestore(app);
-export const analytics = getAnalytics(app);
-export const storage = getStorage(app);
-export { auth };
-
-// Export the Firebase app (optional, for other potential uses)
+export { auth, db, storage };
 export default app;

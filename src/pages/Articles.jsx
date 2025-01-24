@@ -49,11 +49,12 @@ const Articles = () => {
         return {
           id: doc.id,
           data: {
-            title: data.title,
-            content: data.content,
-            category: data.category,
+            title: data.blogData?.title,
+            content: data.blogData?.content,
+            category: data.blogData?.category,
             imageUrl: data.imageUrl,
             timestamp: data.timestamp,
+            author: data.author
           },
           likeCount: data.likes?.count || 0,
           dislikeCount: data.dislikes?.count || 0,
@@ -211,11 +212,12 @@ const Articles = () => {
         return {
           id: doc.id,
           data: {
-            title: data.title,
-            content: data.content,
-            category: data.category,
+            title: data.blogData?.title,
+            content: data.blogData?.content,
+            category: data.blogData?.category,
             imageUrl: data.imageUrl,
             timestamp: data.timestamp,
+            author: data.author
           },
           likeCount: data.likes?.count || 0,
           dislikeCount: data.dislikes?.count || 0,

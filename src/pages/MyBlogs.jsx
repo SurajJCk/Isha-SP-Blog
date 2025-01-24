@@ -7,6 +7,7 @@ import {
   where,
   getDoc,
   updateDoc,
+  orderBy
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import { db } from "../config/firebase";
@@ -42,18 +43,23 @@ const MyBlogs = () => {
 
       try {
         const blogRef = collection(db, "blogs");
-        const q = query(blogRef, where("userId", "==", currentUser.uid));
+        const q = query(
+          blogRef, 
+          where("author.id", "==", currentUser.uid),
+          orderBy("timestamp", "desc")
+        );
         const querySnapshot = await getDocs(q);
         const blogs = querySnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
             data: {
-              title: data.title,
-              content: data.content,
-              category: data.category,
+              title: data.blogData.title,
+              content: data.blogData.content,
+              category: data.blogData.category,
               imageUrl: data.imageUrl,
               timestamp: data.timestamp,
+              author: data.author
             },
             likeCount: data.likes?.count || 0,
             dislikeCount: data.dislikes?.count || 0,
@@ -184,7 +190,7 @@ const MyBlogs = () => {
     }
   };
 
-  const delHandler = async (id) => {
+  const handleDelete = async (id) => {
     try {
       await deleteDoc(doc(db, "blogs", id));
       toast.success("Article deleted successfully");
@@ -216,7 +222,7 @@ const MyBlogs = () => {
               dislikeCount={blog.dislikeCount}
               userAction={blog.userAction}
               onVote={handleVote}
-              delHandler={delHandler}
+              delHandler={handleDelete}
             />
           ))
         ) : (

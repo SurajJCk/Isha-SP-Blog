@@ -5,6 +5,38 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "blogData.category",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "blogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "author.id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "blogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "blogData.category",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "timestamp",
           "order": "DESCENDING"
         }

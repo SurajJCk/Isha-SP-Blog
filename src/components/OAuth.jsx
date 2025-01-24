@@ -1,22 +1,12 @@
 import { useState } from "react";
-import {
-  GoogleAuthProvider,
-  getAuth,
-  signInWithPopup,
-  updateProfile,
-} from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import {
-  getDownloadURL,
-  getStorage,
-  ref,
-  uploadBytesResumable,
-} from "firebase/storage";
+import { getDownloadURL, getStorage, ref, uploadBytesResumable } from "firebase/storage";
 import { toast } from "react-hot-toast";
 import { FcGoogle } from "react-icons/fc";
 import { FcAddImage } from "react-icons/fc";
 import { useNavigate } from "react-router-dom";
-import { db } from "../config/firebase";
+import { auth, db } from "../config/firebase";
 import { v4 as uuidv4 } from "uuid";
 
 const OAuth = () => {
@@ -31,36 +21,50 @@ const OAuth = () => {
   const signInWithGoogle = async () => {
     try {
       setIsLoading(true);
-      const auth = getAuth();
+      
+      // Create a new GoogleAuthProvider instance
       const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({
-        prompt: "select_account",
-      });
-
-      const userCredentials = await signInWithPopup(auth, provider);
-      const user = userCredentials.user;
+      
+      // Sign in with popup
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      if (!user) {
+        toast.error("No user data received");
+        return;
+      }
 
       // Check if user already exists
       const userDoc = await getDoc(doc(db, "users", user.uid));
+      
       if (userDoc.exists()) {
-        // User exists, redirect to home
         toast.success("Welcome back!");
         navigate("/");
         return;
       }
 
-      if (user) {
-        setTempUserData(user);
-        setShowNameInput(true);
-        // Pre-fill name from Google account as default
-        setCustomName(user.displayName || "");
-      }
+      // For new users
+      setTempUserData(user);
+      setShowNameInput(true);
+      setCustomName(user.displayName || "");
+      
     } catch (error) {
       console.error("Google sign-in error:", error);
-      if (error.code === "auth/popup-closed-by-user") {
-        toast.error("Sign-in cancelled");
-      } else {
-        toast.error("Failed to sign in with Google");
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      
+      switch (error.code) {
+        case "auth/popup-closed-by-user":
+          toast.error("Sign-in cancelled");
+          break;
+        case "auth/popup-blocked":
+          toast.error("Pop-up blocked by browser. Please allow pop-ups for this site.");
+          break;
+        case "auth/cancelled-popup-request":
+          toast.error("Another sign-in attempt is in progress");
+          break;
+        default:
+          toast.error("Failed to sign in. Please try again.");
       }
     } finally {
       setIsLoading(false);
@@ -121,8 +125,6 @@ const OAuth = () => {
 
     try {
       setIsLoading(true);
-      const auth = getAuth();
-
       await updateProfile(auth.currentUser, {
         displayName: customName,
       });

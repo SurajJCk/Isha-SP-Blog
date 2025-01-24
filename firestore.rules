@@ -1,6 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /users/{userId} {
+      // Allow users to read and write only their own documents
+      allow create: if request.auth != null;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     match /blogs/{blogId} {
       // Allow reading blogs by anyone
       allow read: if true;
@@ -13,14 +19,19 @@ service cloud.firestore {
         (
           // Only allow updating likes and dislikes fields
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['likes', 'dislikes']) ||
+            .hasOnly(['likes', 'dislikes', 'comments']) ||
           // Or if the user is updating their own blog
-          resource.data.userId == request.auth.uid
+          resource.data.author.id == request.auth.uid
         );
       
       // Allow deletion only by the blog owner
       allow delete: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
+        resource.data.author.id == request.auth.uid;
+    }
+
+    match /blog-categories/{categoryId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.admin == true;
     }
   }
 }
