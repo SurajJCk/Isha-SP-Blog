@@ -70,7 +70,9 @@ const WriteBlog = () => {
             name: auth.currentUser.displayName,
             id: auth.currentUser.uid,
           },
-          blogData,
+          title: blogData.title,
+          content: blogData.content,
+          category: blogData.category,
           imageUrl,
           comments: [],
         });

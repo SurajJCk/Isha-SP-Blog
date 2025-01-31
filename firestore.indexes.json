@@ -11,6 +11,24 @@
         {
           "fieldPath": "timestamp",
           "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "_name_",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "blogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "timestamp",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "_name_",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -33,12 +51,12 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "blogData.category",
+          "fieldPath": "author.id",
           "order": "ASCENDING"
         },
         {
           "fieldPath": "timestamp",
-          "order": "DESCENDING"
+          "order": "ASCENDING"
         }
       ]
     }

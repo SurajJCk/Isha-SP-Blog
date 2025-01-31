@@ -48,14 +48,12 @@ const Articles = () => {
         const data = doc.data();
         return {
           id: doc.id,
-          data: {
-            title: data.blogData?.title,
-            content: data.blogData?.content,
-            category: data.blogData?.category,
-            imageUrl: data.imageUrl,
-            timestamp: data.timestamp,
-            author: data.author
-          },
+          title: data.title,
+          content: data.content,
+          category: data.category,
+          imageUrl: data.imageUrl,
+          timestamp: data.timestamp,
+          author: data.author,
           likeCount: data.likes?.count || 0,
           dislikeCount: data.dislikes?.count || 0,
           userAction: currentUser
@@ -211,14 +209,12 @@ const Articles = () => {
         const data = doc.data();
         return {
           id: doc.id,
-          data: {
-            title: data.blogData?.title,
-            content: data.blogData?.content,
-            category: data.blogData?.category,
-            imageUrl: data.imageUrl,
-            timestamp: data.timestamp,
-            author: data.author
-          },
+          title: data.title,
+          content: data.content,
+          category: data.category,
+          imageUrl: data.imageUrl,
+          timestamp: data.timestamp,
+          author: data.author,
           likeCount: data.likes?.count || 0,
           dislikeCount: data.dislikes?.count || 0,
           userAction: currentUser
@@ -275,7 +271,7 @@ const Articles = () => {
             <Card
               key={blog.id}
               id={blog.id}
-              blog={blog.data}
+              blog={blog}
               likeCount={blog.likeCount}
               dislikeCount={blog.dislikeCount}
               userAction={blog.userAction}

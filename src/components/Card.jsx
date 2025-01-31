@@ -46,13 +46,21 @@ const Card = ({ id, blog, userAction, likeCount, dislikeCount, onVote, onDelete 
   const fallBackImage =
     "https://img.freepik.com/free-photo/digital-painting-mountain-with-colorful-tree-foreground_1340-25699.jpg?w=900&t=st=1686204841~exp=1686205441~hmac=16586e1f1340a9b9a774cd9538d3a9fc9fcd78acf00fbe2405160352f137faa4";
 
+  // Get data from blog object
+  const title = blog?.title || "Untitled";
+  const content = blog?.content || "";
+  const category = blog?.category || "Uncategorized";
+  const imageUrl = blog?.imageUrl || fallBackImage;
+  const author = blog?.author || { name: "Anonymous" };
+  const timestamp = blog?.timestamp;
+
   // Safely parse content or return empty string
-  const parsedContent = blog?.content ? parse(blog.content) : "";
+  const parsedContent = content ? parse(content) : "";
 
   return (
     <div>
       <div
-        onClick={() => navigate(`/category/${blog?.category}/${id}`)}
+        onClick={() => navigate(`/category/${category}/${id}`)}
         className='google__btn__shadow relative mx-auto my-2 max-w-sm overflow-hidden rounded-lg border border-gray-200 bg-white bg-gradient-to-r from-gray-700 via-gray-900 to-black shadow transition-all duration-200 ease-in-out hover:shadow-lg hover:shadow-sky-800 dark:border-gray-700 dark:bg-gray-800'
       >
         <a href='#' className='transition-all duration-300 ease-in-out'>
@@ -60,15 +68,18 @@ const Card = ({ id, blog, userAction, likeCount, dislikeCount, onVote, onDelete 
             classes={
               "h-72 w-[30rem] rounded-t-lg object-cover transition-all duration-300 ease-in-out hover:scale-105"
             }
-            image={blog?.imageUrl ? blog?.imageUrl : fallBackImage}
+            image={imageUrl}
           />
         </a>
         <div className='h-56 p-5 font-bold tracking-tight'>
-          <a href='#'>
-            <h2 className='mb-2 line-clamp-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white'>
-              {blog?.title || "Untitled"}
+          <div className="flex justify-between items-center mb-2">
+            <h2 className='line-clamp-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white'>
+              {title}
             </h2>
-          </a>
+            <span className="px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+              {category}
+            </span>
+          </div>
           <p className='mb-3 line-clamp-2 font-normal text-gray-700 dark:text-gray-400'>
             {parsedContent}
           </p>
@@ -101,7 +112,7 @@ const Card = ({ id, blog, userAction, likeCount, dislikeCount, onVote, onDelete 
               Read more
               <svg
                 aria-hidden='true'
-                className='-mr-1 ml-2 h-4 w-4'
+                className='ml-2 -mr-1 h-4 w-4'
                 fill='currentColor'
                 viewBox='0 0 20 20'
                 xmlns='http://www.w3.org/2000/svg'
@@ -113,75 +124,58 @@ const Card = ({ id, blog, userAction, likeCount, dislikeCount, onVote, onDelete 
                 ></path>
               </svg>
             </button>
-            <span className='absolute right-2 top-[14.8rem] cursor-pointer rounded-lg bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-4 active:scale-95'>
-              {blog?.category || "Uncategorized"}
-            </span>
-            <span className="active:scale-95' absolute left-2 top-[14.8rem] cursor-pointer rounded-lg bg-zinc-600 px-3 py-2 text-sm font-medium focus:outline-none focus:ring-4">
-              {blog?.timestamp
-                ? dayjs(blog.timestamp.toDate()).fromNow()
-                : "Timestamp not available"}
-            </span>
-
-            {/* Action icons container - Now always visible */}
-            <div
-              onClick={handleActionClick}
-              className='z-50 flex items-center space-x-3'
-            >
-              {/* Share icon - Always visible */}
-              <span
+          </div>
+          <div className='mt-4 flex items-center justify-between'>
+            <div className='flex items-center space-x-2'>
+              <span className='text-sm text-gray-500'>
+                {author?.name || "Anonymous"}
+              </span>
+              <span className='text-sm text-gray-500'>•</span>
+              <span className='text-sm text-gray-500'>
+                {timestamp ? dayjs(timestamp.toDate()).fromNow() : ""}
+              </span>
+            </div>
+            <div className='flex items-center space-x-2'>
+              <button
                 onClick={handleShare}
-                className='cursor-pointer active:scale-95'
-                title='Share article'
+                className='rounded-full p-2 hover:bg-gray-100'
               >
                 <svg
                   xmlns='http://www.w3.org/2000/svg'
+                  fill='none'
                   viewBox='0 0 24 24'
-                  className='h-6 w-6 stroke-blue-500 stroke-[1.2px]'
+                  strokeWidth={1.5}
+                  stroke='currentColor'
+                  className='h-5 w-5'
                 >
                   <path
                     strokeLinecap='round'
                     strokeLinejoin='round'
-                    d='M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185z'
+                    d='M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z'
                   />
                 </svg>
-              </span>
-
-              {/* Delete and Edit icons - Only visible for authenticated users on specific pages */}
-              {auth.currentUser &&
-                location.pathname !== "/articles" &&
-                location.pathname !== "/" && (
-                  <>
-                    <span
-                      onClick={handleDelete}
-                      className='cursor-pointer active:scale-95'
-                    >
-                      <svg
-                        xmlns='http://www.w3.org/2000/svg'
-                        viewBox='0 0 24 24'
-                        className='h-6 w-6 stroke-red-500 stroke-2'
-                      >
-                        <path
-                          fillRule='evenodd'
-                          d='M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5.058l.347 9a.75.75 0 001.499-.058l-.346-9zm5.48.058a.75.75 0 10-1.498-.058l-.347 9a.75.75 0 001.5.058l.345-9z'
-                          clipRule='evenodd'
-                        />
-                      </svg>
-                    </span>
-                    <span
-                      onClick={() => navigate(`/edit/${id}`)}
-                      className='cursor-pointer active:scale-95'
-                    >
-                      <svg
-                        xmlns='http://www.w3.org/2000/svg'
-                        viewBox='0 0 24 24'
-                        className='h-6 w-6 stroke-cyan-500 stroke-[1.2px]'
-                      >
-                        <path d='M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32l8.4-8.4z' />
-                        <path d='M5.25 5.25a3 3 0 00-3 3v10.5a3 3 0 003 3h10.5a3 3 0 003-3V13.5a.75.75 0 00-1.5 0v5.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5V8.25a1.5 1.5 0 011.5-1.5h5.25a.75.75 0 000-1.5H5.25z' />
-                      </svg>
-                    </span>
-                  </>
-                )}
+              </button>
+              {author?.id === auth?.currentUser?.uid && (
+                <button
+                  onClick={handleDelete}
+                  className='rounded-full p-2 hover:bg-gray-100'
+                >
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    fill='none'
+                    viewBox='0 0 24 24'
+                    strokeWidth={1.5}
+                    stroke='currentColor'
+                    className='h-5 w-5 text-red-500'
+                  >
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0'
+                    />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         </div>
