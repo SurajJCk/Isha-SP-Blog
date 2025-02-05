@@ -54,13 +54,7 @@ const Register = () => {
   const storeImage = async () => {
     return new Promise((resolve, reject) => {
       if (!image) {
-        resolve(""); // No image case
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (image.size > 5 * 1024 * 1024) {
-        reject(new Error("File size should be less than 5MB"));
+        resolve(null); // Return null if no image is provided
         return;
       }
 
@@ -111,17 +105,26 @@ const Register = () => {
         password
       );
 
+      // Update user profile with displayName
       await updateProfile(auth.currentUser, {
         displayName: name,
       });
 
-      const user = userCredentials.user;
-      const downloadedUrl = await storeImage();
+      // Store image after user is created
+      let downloadedUrl = null;
+      try {
+        downloadedUrl = await storeImage();
+      } catch (error) {
+        console.error("Image upload failed:", error);
+        toast.error("Image upload failed. Proceeding without an avatar.");
+      }
 
+      // Save user data to Firestore
+      const user = userCredentials.user;
       await setDoc(doc(db, "users", user.uid), {
         name: name,
         email: user.email,
-        avatarUrl: downloadedUrl,
+        avatarUrl: downloadedUrl || null, // Use null if no image is uploaded
         timestamp: serverTimestamp(),
       });
 
@@ -137,6 +140,7 @@ const Register = () => {
         toast.error("Error during registration");
       }
     } finally {
+      setProgressState(null); // Reset progress bar
       setIsLoading(false);
     }
   };

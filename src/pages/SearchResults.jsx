@@ -29,37 +29,34 @@ const SearchResults = () => {
       setLoading(true);
       try {
         const blogRef = collection(db, "blogs");
-        const q = query(blogRef);
+        const q = query(blogRef, orderBy("timestamp", "desc"));
         const querySnapshot = await getDocs(q);
         const results = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          const titleMatch = data.title
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase());
-          const contentMatch = data.content
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase());
-          if (titleMatch || contentMatch) {
-            results.push({
-              id: doc.id,
-              data: {
-                title: data.title,
-                content: data.content,
-                category: data.category,
-                imageUrl: data.imageUrl,
-                timestamp: data.timestamp,
-              },
-              likeCount: data.likes?.count || 0,
-              dislikeCount: data.dislikes?.count || 0,
-              userAction: currentUser
-                ? data.likes?.userIds?.includes(currentUser.uid)
-                  ? "like"
-                  : data.dislikes?.userIds?.includes(currentUser.uid)
-                  ? "dislike"
-                  : null
-                : null,
-            });
+          // Check if the required fields exist before accessing
+          if (data && data.title && data.content) {
+            const titleMatch = data.title
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase());
+            const contentMatch = data.content
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase());
+            if (titleMatch || contentMatch) {
+              results.push({
+                id: doc.id,
+                ...data,
+                likeCount: data.likes?.count || 0,
+                dislikeCount: data.dislikes?.count || 0,
+                userAction: currentUser
+                  ? data.likes?.userIds?.includes(currentUser.uid)
+                    ? "like"
+                    : data.dislikes?.userIds?.includes(currentUser.uid)
+                    ? "dislike"
+                    : null
+                  : null,
+              });
+            }
           }
         });
         setSearchResults(results);
@@ -101,80 +98,98 @@ const SearchResults = () => {
 
       if (blog.userAction === action) {
         // User is un-voting
-        if (action === 'like') {
-          updates.likes = {
-            userIds: Array.isArray(currentData.likes?.userIds) 
-              ? currentData.likes.userIds.filter(id => id !== currentUser.uid)
-              : [],
-            count: Math.max((currentData.likes?.count || 1) - 1, 0)
+        if (action === "like") {
+          updates = {
+            likes: {
+              count: (currentData.likes?.count || 1) - 1,
+              userIds: (currentData.likes?.userIds || []).filter(
+                (id) => id !== currentUser.uid
+              ),
+            },
           };
         } else {
-          updates.dislikes = {
-            userIds: Array.isArray(currentData.dislikes?.userIds)
-              ? currentData.dislikes.userIds.filter(id => id !== currentUser.uid)
-              : [],
-            count: Math.max((currentData.dislikes?.count || 1) - 1, 0)
+          updates = {
+            dislikes: {
+              count: (currentData.dislikes?.count || 1) - 1,
+              userIds: (currentData.dislikes?.userIds || []).filter(
+                (id) => id !== currentUser.uid
+              ),
+            },
           };
         }
-
+        
         // Update local state
-        const updatedResults = [...searchResults];
-        updatedResults[blogIndex] = {
-          ...blog,
-          [`${action}Count`]: Math.max(blog[`${action}Count`] - 1, 0),
-          userAction: null,
-        };
-        setSearchResults(updatedResults);
+        setSearchResults((prevResults) => {
+          const newResults = [...prevResults];
+          newResults[blogIndex] = {
+            ...newResults[blogIndex],
+            userAction: null,
+            likeCount:
+              action === "like"
+                ? newResults[blogIndex].likeCount - 1
+                : newResults[blogIndex].likeCount,
+            dislikeCount:
+              action === "dislike"
+                ? newResults[blogIndex].dislikeCount - 1
+                : newResults[blogIndex].dislikeCount,
+          };
+          return newResults;
+        });
       } else {
         // User is voting or changing vote
-        if (action === 'like') {
-          updates.likes = {
-            userIds: Array.isArray(currentData.likes?.userIds)
-              ? [...new Set([...currentData.likes.userIds, currentUser.uid])]
-              : [currentUser.uid],
-            count: (currentData.likes?.count || 0) + 1
+        if (action === "like") {
+          updates = {
+            likes: {
+              count: (currentData.likes?.count || 0) + 1,
+              userIds: [...(currentData.likes?.userIds || []), currentUser.uid],
+            },
           };
-          
-          // If user had previously disliked, remove dislike
-          if (blog.userAction === 'dislike') {
+          if (blog.userAction === "dislike") {
             updates.dislikes = {
-              userIds: Array.isArray(currentData.dislikes?.userIds)
-                ? currentData.dislikes.userIds.filter(id => id !== currentUser.uid)
-                : [],
-              count: Math.max((currentData.dislikes?.count || 1) - 1, 0)
+              count: (currentData.dislikes?.count || 1) - 1,
+              userIds: (currentData.dislikes?.userIds || []).filter(
+                (id) => id !== currentUser.uid
+              ),
             };
           }
         } else {
-          updates.dislikes = {
-            userIds: Array.isArray(currentData.dislikes?.userIds)
-              ? [...new Set([...currentData.dislikes.userIds, currentUser.uid])]
-              : [currentUser.uid],
-            count: (currentData.dislikes?.count || 0) + 1
+          updates = {
+            dislikes: {
+              count: (currentData.dislikes?.count || 0) + 1,
+              userIds: [...(currentData.dislikes?.userIds || []), currentUser.uid],
+            },
           };
-          
-          // If user had previously liked, remove like
-          if (blog.userAction === 'like') {
+          if (blog.userAction === "like") {
             updates.likes = {
-              userIds: Array.isArray(currentData.likes?.userIds)
-                ? currentData.likes.userIds.filter(id => id !== currentUser.uid)
-                : [],
-              count: Math.max((currentData.likes?.count || 1) - 1, 0)
+              count: (currentData.likes?.count || 1) - 1,
+              userIds: (currentData.likes?.userIds || []).filter(
+                (id) => id !== currentUser.uid
+              ),
             };
           }
         }
-
+        
         // Update local state
-        const updatedResults = [...searchResults];
-        updatedResults[blogIndex] = {
-          ...blog,
-          [`${action}Count`]: blog[`${action}Count`] + 1,
-          [`${action === "like" ? "dislikeCount" : "likeCount"}`]:
-            blog.userAction
-              ? Math.max(blog[`${action === "like" ? "dislikeCount" : "likeCount"}`] - 1, 0)
-              : blog[`${action === "like" ? "dislikeCount" : "likeCount"}`],
-          userAction: action,
-        };
-        setSearchResults(updatedResults);
+        setSearchResults((prevResults) => {
+          const newResults = [...prevResults];
+          newResults[blogIndex] = {
+            ...newResults[blogIndex],
+            userAction: action,
+            likeCount:
+              action === "like"
+                ? newResults[blogIndex].likeCount + 1
+                : blog.userAction === "like"
+                ? newResults[blogIndex].likeCount - 1
+                : newResults[blogIndex].likeCount,
+            dislikeCount:
+              action === "dislike"
+                ? newResults[blogIndex].dislikeCount + 1
+                : blog.userAction === "dislike"
+                ? newResults[blogIndex].dislikeCount - 1
+                : newResults[blogIndex].dislikeCount,
+          };
+          return newResults;
+        });
       }
 
       await updateDoc(blogRef, updates);
@@ -185,39 +200,39 @@ const SearchResults = () => {
   };
 
   return (
-    <main className='mx-auto max-w-7xl'>
-      <div className='my-12'>
+    <div className='mx-auto mt-10 max-w-7xl'>
+      <div className='mb-10'>
         <Search />
       </div>
-
-      <section>
-        {!loading ? (
-          searchResults.length > 0 ? (
-            searchResults.map((blog) => (
+      <div className='mx-4'>
+        <h2 className='mb-6 text-2xl font-bold text-white'>
+          Search Results for "{searchQuery}" ({searchResults.length})
+        </h2>
+        {loading ? (
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+            {[1, 2, 3].map((item) => (
+              <CardSkeleton key={item} />
+            ))}
+          </div>
+        ) : searchResults.length > 0 ? (
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+            {searchResults.map((blog) => (
               <Card
                 key={blog.id}
                 id={blog.id}
-                blog={blog.data}
+                blog={blog}
+                userAction={blog.userAction}
                 likeCount={blog.likeCount}
                 dislikeCount={blog.dislikeCount}
-                userAction={blog.userAction}
                 onVote={handleVote}
               />
-            ))
-          ) : (
-            <p className='mt-24 text-center text-4xl font-extrabold'>
-              No results found for "{searchQuery}"
-            </p>
-          )
-        ) : (
-          <div className='mx-auto mt-12 grid w-[95%] grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3'>
-            {Array.from({ length: 6 }).map((_, index) => (
-              <CardSkeleton key={index} />
             ))}
           </div>
+        ) : (
+          <p className='text-center text-gray-500'>No results found</p>
         )}
-      </section>
-    </main>
+      </div>
+    </div>
   );
 };
 

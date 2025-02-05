@@ -5,10 +5,13 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  query,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { toast } from "react-hot-toast";
 import Loader from "../components/Loader";
+import dayjs from "dayjs";
 
 const AdminDashboard = () => {
   const [allPosts, setAllPosts] = useState([]);
@@ -18,8 +21,12 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        // Fetch all posts
-        const postsSnap = await getDocs(collection(db, "blogs"));
+        // Fetch all posts with ordering
+        const postsQuery = query(
+          collection(db, "blogs"),
+          orderBy("timestamp", "desc")
+        );
+        const postsSnap = await getDocs(postsQuery);
         const posts = postsSnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -36,8 +43,9 @@ const AdminDashboard = () => {
 
         setLoading(false);
       } catch (error) {
-        console.error(error);
+        console.error("Error fetching data:", error);
         toast.error("Error fetching data");
+        setLoading(false);
       }
     };
 
@@ -45,12 +53,38 @@ const AdminDashboard = () => {
   }, []);
 
   const deletePost = async (postId) => {
+    if (window.confirm("Are you sure you want to delete this post?")) {
+      try {
+        await deleteDoc(doc(db, "blogs", postId));
+        setAllPosts((posts) => posts.filter((post) => post.id !== postId));
+        toast.success("Post deleted successfully");
+      } catch (error) {
+        console.error("Error deleting post:", error);
+        toast.error("Error deleting post");
+      }
+    }
+  };
+
+  const toggleUserAdmin = async (userId, currentStatus) => {
     try {
-      await deleteDoc(doc(db, "blogs", postId));
-      setAllPosts((posts) => posts.filter((post) => post.id !== postId));
-      toast.success("Post deleted successfully");
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        isAdmin: !currentStatus,
+      });
+      
+      // Update local state
+      setAllUsers(users =>
+        users.map(user =>
+          user.id === userId
+            ? { ...user, isAdmin: !currentStatus }
+            : user
+        )
+      );
+      
+      toast.success("User role updated successfully");
     } catch (error) {
-      toast.error("Error deleting post");
+      console.error("Error updating user role:", error);
+      toast.error("Error updating user role");
     }
   };
 
@@ -58,22 +92,35 @@ const AdminDashboard = () => {
 
   return (
     <div className='mx-auto max-w-7xl p-4'>
-      <h1 className='mb-8 text-3xl font-bold'>Admin Dashboard</h1>
+      <h1 className='mb-8 text-3xl font-bold text-white'>Admin Dashboard</h1>
 
       {/* Posts Section */}
-      <div className='mb-8'>
-        <h2 className='mb-4 text-2xl font-semibold'>All Posts</h2>
+      <div className='mb-12'>
+        <h2 className='mb-4 text-2xl font-semibold text-white'>All Posts ({allPosts.length})</h2>
         <div className='grid gap-4'>
           {allPosts.map((post) => (
-            <div key={post.id} className='rounded-lg border p-4'>
-              <h3 className='font-medium'>{post.blogData.title}</h3>
-              <p className='text-sm text-gray-600'>By: {post.author.name}</p>
-              <button
-                onClick={() => deletePost(post.id)}
-                className='mt-2 rounded bg-red-500 px-3 py-1 text-white hover:bg-red-600'
-              >
-                Delete
-              </button>
+            <div
+              key={post.id}
+              className='rounded-lg border border-gray-700 bg-gray-800 p-4 hover:bg-gray-700'
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className='font-medium text-white'>{post.title}</h3>
+                  <p className='text-sm text-gray-400'>By: {post.author?.name}</p>
+                  <p className='text-sm text-gray-500'>
+                    Category: {post.category}
+                  </p>
+                  <p className='text-xs text-gray-500'>
+                    Posted: {post.timestamp ? dayjs(post.timestamp.toDate()).format('YYYY-MM-DD HH:mm') : 'Unknown'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => deletePost(post.id)}
+                  className='rounded bg-red-500 px-3 py-1 text-white hover:bg-red-600 transition-colors'
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -81,15 +128,32 @@ const AdminDashboard = () => {
 
       {/* Users Section */}
       <div>
-        <h2 className='mb-4 text-2xl font-semibold'>All Users</h2>
+        <h2 className='mb-4 text-2xl font-semibold text-white'>All Users ({allUsers.length})</h2>
         <div className='grid gap-4'>
           {allUsers.map((user) => (
-            <div key={user.id} className='rounded-lg border p-4'>
-              <p className='font-medium'>{user.name}</p>
-              <p className='text-sm text-gray-600'>{user.email}</p>
-              <p className='text-xs text-gray-500'>
-                {user.isAdmin ? "Admin" : "User"}
-              </p>
+            <div
+              key={user.id}
+              className='rounded-lg border border-gray-700 bg-gray-800 p-4 hover:bg-gray-700'
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className='font-medium text-white'>{user.name}</p>
+                  <p className='text-sm text-gray-400'>{user.email}</p>
+                  <p className='text-xs text-gray-500'>
+                    Role: {user.isAdmin ? "Admin" : "User"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => toggleUserAdmin(user.id, user.isAdmin)}
+                  className={`rounded px-3 py-1 text-white transition-colors ${
+                    user.isAdmin
+                      ? 'bg-yellow-500 hover:bg-yellow-600'
+                      : 'bg-green-500 hover:bg-green-600'
+                  }`}
+                >
+                  {user.isAdmin ? 'Remove Admin' : 'Make Admin'}
+                </button>
+              </div>
             </div>
           ))}
         </div>

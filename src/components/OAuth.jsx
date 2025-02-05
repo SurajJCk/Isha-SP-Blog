@@ -3,8 +3,7 @@ import { GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/aut
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { getDownloadURL, getStorage, ref, uploadBytesResumable } from "firebase/storage";
 import { toast } from "react-hot-toast";
-import { FcGoogle } from "react-icons/fc";
-import { FcAddImage } from "react-icons/fc";
+import { FcGoogle, FcAddImage } from "react-icons/fc";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../config/firebase";
 import { v4 as uuidv4 } from "uuid";
@@ -21,50 +20,40 @@ const OAuth = () => {
   const signInWithGoogle = async () => {
     try {
       setIsLoading(true);
-      
-      // Create a new GoogleAuthProvider instance
       const provider = new GoogleAuthProvider();
-      
-      // Sign in with popup
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      
+
       if (!user) {
         toast.error("No user data received");
         return;
       }
 
-      // Check if user already exists
       const userDoc = await getDoc(doc(db, "users", user.uid));
-      
       if (userDoc.exists()) {
         toast.success("Welcome back!");
         navigate("/");
         return;
       }
 
-      // For new users
       setTempUserData(user);
       setShowNameInput(true);
       setCustomName(user.displayName || "");
       
     } catch (error) {
       console.error("Google sign-in error:", error);
-      console.error("Error code:", error.code);
-      console.error("Error message:", error.message);
-      
       switch (error.code) {
         case "auth/popup-closed-by-user":
           toast.error("Sign-in cancelled");
           break;
         case "auth/popup-blocked":
-          toast.error("Pop-up blocked by browser. Please allow pop-ups for this site.");
+          toast.error("Enable pop-ups to sign in");
           break;
         case "auth/cancelled-popup-request":
-          toast.error("Another sign-in attempt is in progress");
+          toast.error("Another sign-in in progress");
           break;
         default:
-          toast.error("Failed to sign in. Please try again.");
+          toast.error("Sign-in failed. Try again.");
       }
     } finally {
       setIsLoading(false);
@@ -74,13 +63,7 @@ const OAuth = () => {
   const storeImage = async (user) => {
     return new Promise((resolve, reject) => {
       if (!image) {
-        resolve(tempUserData.photoURL); // Use Google photo if no custom image
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (image.size > 5 * 1024 * 1024) {
-        reject(new Error("File size should be less than 5MB"));
+        resolve(tempUserData.photoURL); // Fallback to Google photo
         return;
       }
 
@@ -92,19 +75,18 @@ const OAuth = () => {
       uploadTask.on(
         "state_changed",
         (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setProgressState(progress);
+          setProgressState(
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+          );
         },
         (error) => {
-          console.error("Upload error:", error);
-          toast.error("Unable to upload file");
+          toast.error("Image upload failed");
           reject(error);
         },
         () => {
           getDownloadURL(uploadTask.snapshot.ref)
-            .then((downloadURL) => resolve(downloadURL))
-            .catch((error) => reject(error));
+            .then(resolve)
+            .catch(reject);
         }
       );
     });
@@ -113,13 +95,8 @@ const OAuth = () => {
   const handleNameSubmit = async (e) => {
     e.preventDefault();
 
-    if (!customName.trim()) {
-      toast.error("Please enter your name");
-      return;
-    }
-
-    if (customName.length < 2) {
-      toast.error("Name must be at least 2 characters long");
+    if (!customName.trim() || customName.length < 2) {
+      toast.error("Enter a valid name (min 2 characters)");
       return;
     }
 
@@ -131,40 +108,37 @@ const OAuth = () => {
 
       const downloadedUrl = await storeImage(auth.currentUser);
 
-      await setDoc(
-        doc(db, "users", tempUserData.uid),
-        {
-          name: customName,
-          email: tempUserData.email,
-          avatarUrl: downloadedUrl,
-          timestamp: serverTimestamp(),
-        },
-        { merge: true }
-      );
+      await setDoc(doc(db, "users", tempUserData.uid), {
+        name: customName,
+        email: tempUserData.email,
+        avatarUrl: downloadedUrl || tempUserData.photoURL, // Double fallback
+        timestamp: serverTimestamp(),
+      });
 
-      toast.success("Profile created successfully!");
+      toast.success("Profile created!");
       navigate("/");
     } catch (error) {
-      console.error("Error updating profile:", error);
-      if (error.message.includes("5MB")) {
-        toast.error("Image file size should be less than 5MB");
-      } else {
-        toast.error("Error saving profile data");
-      }
+      console.error("Profile update error:", error);
+      toast.error(
+        error.message.includes("5MB") 
+          ? "Image must be <5MB" 
+          : "Error saving profile"
+      );
     } finally {
+      setProgressState(null);
       setIsLoading(false);
     }
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size should be less than 5MB");
-        return;
-      }
-      setImage(file);
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Max file size: 5MB");
+      return;
     }
+    setImage(file);
   };
 
   if (showNameInput) {
@@ -182,7 +156,7 @@ const OAuth = () => {
               minLength={2}
               disabled={isLoading}
             />
-            <label className='form__label'>Enter your preferred name</label>
+            <label className='form__label'>Preferred Name</label>
           </div>
 
           <div className='mx-auto w-full max-w-[90%] py-4'>
@@ -193,6 +167,7 @@ const OAuth = () => {
               style={{ display: "none" }}
               accept='.jpg,.png,.jpeg'
               disabled={isLoading}
+              aria-label='Upload avatar'
             />
             <label
               htmlFor='googleFile'
@@ -234,9 +209,10 @@ const OAuth = () => {
         onClick={signInWithGoogle}
         disabled={isLoading}
         className='google__btn__shadow flex w-full cursor-pointer items-center justify-center rounded-md bg-gradient-to-r from-rose-400 to-red-500 py-3 font-semibold text-white transition duration-200 ease-in-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-50'
+        aria-label='Sign in with Google'
       >
         <FcGoogle size={22} className='mr-2 rounded-full bg-white' />
-        {isLoading ? "Connecting..." : "Sign in with google"}
+        {isLoading ? "Connecting..." : "Sign in with Google"}
       </button>
     </div>
   );

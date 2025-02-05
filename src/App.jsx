@@ -17,6 +17,7 @@ import SearchResults from "./pages/SearchResults";
 import AdminRoute from "./components/AdminRoute";
 import AdminDashboard from "./pages/AdminDashboard";
 import Profile from "./pages/Profile";
+import Games from './pages/Games';
 
 const App = () => {
   /* 
@@ -31,6 +32,7 @@ const App = () => {
 
         <Routes>
           <Route path='/' element={<Home />} />
+          <Route path='/games' element={<Games />} />
           {/* Private Routes */}
           <Route element={<PrivateRoute />}>
             <Route path='/myBlogs/:userId' element={<MyBlogs />} />

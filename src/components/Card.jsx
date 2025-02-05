@@ -61,24 +61,24 @@ const Card = ({ id, blog, userAction, likeCount, dislikeCount, onVote, onDelete 
     <div>
       <div
         onClick={() => navigate(`/category/${category}/${id}`)}
-        className='google__btn__shadow relative mx-auto my-2 max-w-sm overflow-hidden rounded-lg border border-gray-200 bg-white bg-gradient-to-r from-gray-700 via-gray-900 to-black shadow transition-all duration-200 ease-in-out hover:shadow-lg hover:shadow-sky-800 dark:border-gray-700 dark:bg-gray-800'
+        className='google__btn__shadow relative mx-auto my-2 max-w-sm overflow-hidden rounded-lg border border-gray-200 bg-white bg-gradient-to-r from-gray-700 via-gray-900 to-black shadow transition-all duration-200 ease-in-out hover:shadow-lg hover:shadow-sky-800 dark:border-gray-700 dark:bg-gray-800 cursor-pointer'
       >
-        <a href='#' className='transition-all duration-300 ease-in-out'>
+        <div className='transition-all duration-300 ease-in-out'>
           <LazyLoad
             classes={
               "h-72 w-[30rem] rounded-t-lg object-cover transition-all duration-300 ease-in-out hover:scale-105"
             }
             image={imageUrl}
           />
-        </a>
+        </div>
         <div className='h-56 p-5 font-bold tracking-tight'>
-          <div className="flex justify-between items-center mb-2">
+          <div className="flex flex-col gap-2 mb-2">
+            <span className="self-start px-3 py-1 text-sm font-semibold rounded-full bg-blue-500 text-white capitalize">
+              {category}
+            </span>
             <h2 className='line-clamp-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white'>
               {title}
             </h2>
-            <span className="px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
-              {category}
-            </span>
           </div>
           <p className='mb-3 line-clamp-2 font-normal text-gray-700 dark:text-gray-400'>
             {parsedContent}

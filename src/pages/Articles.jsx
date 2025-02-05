@@ -54,6 +54,7 @@ const Articles = () => {
           imageUrl: data.imageUrl,
           timestamp: data.timestamp,
           author: data.author,
+          userId: data.userId, // Add userId to track article ownership
           likeCount: data.likes?.count || 0,
           dislikeCount: data.dislikes?.count || 0,
           userAction: currentUser

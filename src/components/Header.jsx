@@ -127,13 +127,17 @@ const Header = () => {
               : "top-12 h-screen w-full -translate-x-full flex-col bg-black"
           } `}
         >
-          <li
-            className={`${styles.li} ${
-              location.pathname === "/" && "highlight"
-            } `}
-          >
-            <Link to='/'>Home</Link>
-          </li>
+          <div className='flex items-center gap-4'>
+            <Link to='/' className='text-white hover:text-gray-300'>
+              Home
+            </Link>
+            <Link to='/games' className='text-white hover:text-gray-300'>
+              Games
+            </Link>
+            <Link to='/memes' className='text-white hover:text-gray-300'>
+              Meme Contest
+            </Link>
+          </div>
           <li
             className={`${styles.li} ${
               location.pathname === "/articles" && "highlight"
@@ -206,11 +210,3 @@ const Header = () => {
 };
 
 export default Header;
-
-/* space-y-7 py-10 text-2xl font-semibold transition-all duration-500 ease-in-out
-           ${
-             show
-               ? "top-12 h-screen w-full flex-col bg-black "
-               : "top-12 h-screen -translate-x-full flex-col"
-           } 
-          md:flex-ro md:inline-block md:h-auto md:space-x-4 md:space-y-0 md:py-0 md:text-lg md:transition-none */
