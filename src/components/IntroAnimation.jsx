@@ -4,6 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import gsap from 'gsap';
 import { useNavigate } from 'react-router-dom';
+import './IntroAnimation.css';
 
 function LotusLeaf({ position, rotation, scale }) {
   const leafMaterial = new THREE.MeshPhysicalMaterial({
@@ -639,14 +640,6 @@ function IntroAnimation({ onComplete }) {
           </p>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
 
       <Canvas
         camera={{

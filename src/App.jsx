@@ -20,6 +20,7 @@ import Profile from "./pages/Profile";
 import Games from './pages/Games';
 import MemeContest from './pages/MemeContest';
 import IntroAnimation from './components/IntroAnimation';
+import SadhanapadaProfile from './pages/SadhanapadaProfile';
 import { Toaster } from 'react-hot-toast';
 
 const App = () => {
@@ -107,6 +108,7 @@ const App = () => {
                 <Route path='/sign-up' element={<Register />} />
                 <Route path='/forgot-password' element={<ForgotPassword />} />
                 <Route path='/sign-out' element={<Logout />} />
+                <Route path="/sadhanapada-profiles" element={<SadhanapadaProfile />} />
               </Routes>
             </main>
           </>

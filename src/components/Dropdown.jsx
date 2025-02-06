@@ -1,12 +1,14 @@
 const Dropdown = ({ toggleMenu, category, selectCategory, isOpen }) => {
   const categories = [
+    "sadhanapada",
     "seva",
     "dhyanalinga",
     "sadhguru",
     "meditation",
     "yoga",
     "inner-engineering",
-    "spirituality"
+    "spirituality",
+    "other"
   ];
 
   return (

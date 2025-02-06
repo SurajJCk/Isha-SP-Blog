@@ -55,7 +55,10 @@ const WriteBlog = () => {
           name: authorName || auth.currentUser.displayName,
           id: auth.currentUser.uid,
         },
-        blogData,
+        title: blogData.title,
+        content: blogData.content,
+        description: blogData.description,
+        category: blogData.category,
       });
       navigate(`/myBlogs/${auth.currentUser.uid}`);
       setLoading(false);
@@ -334,6 +337,14 @@ const WriteBlog = () => {
               <div className='absolute z-10 mt-3 w-44 divide-y divide-gray-100 rounded-lg bg-white shadow dark:bg-gray-700'>
                 <ul className='py-2 text-sm text-gray-700 dark:text-gray-200'>
                   <li
+                    onClick={() => selectCategory("sadhanapada")}
+                    id='category'
+                    value='sadhanapada'
+                    className='block cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white'
+                  >
+                    <a>Sadhanapada</a>
+                  </li>
+                  <li
                     onClick={() => selectCategory("seva")}
                     id='category'
                     value='seva'
@@ -388,6 +399,14 @@ const WriteBlog = () => {
                     className='block cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white'
                   >
                     <a>Sadhana</a>
+                  </li>
+                  <li
+                    onClick={() => selectCategory("other")}
+                    id='category'
+                    value='other'
+                    className='block cursor-pointer px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white'
+                  >
+                    <a>Other</a>
                   </li>
                 </ul>
               </div>

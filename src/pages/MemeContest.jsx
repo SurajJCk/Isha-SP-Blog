@@ -22,6 +22,7 @@ const MemeContest = () => {
   const [editingMeme, setEditingMeme] = useState(null);
   const [editCaption, setEditCaption] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [commentInputRefs, setCommentInputRefs] = useState({});
   const auth = getAuth();
 
   useEffect(() => {
@@ -39,51 +40,31 @@ const MemeContest = () => {
       const querySnapshot = await getDocs(q);
       
       const memesData = [];
-      for (const doc of querySnapshot.docs) {
-        const meme = { id: doc.id, ...doc.data() };
+      for (const docSnapshot of querySnapshot.docs) {
+        const meme = { id: docSnapshot.id, ...docSnapshot.data() };
         
-        // Handle system user or missing user data
-        if (meme.userId === 'system') {
+        // Skip system posts
+        if (meme.userId === 'system') continue;
+
+        // Get user data
+        try {
+          const userDoc = await getDoc(doc(db, 'users', meme.userId));
+          const userData = userDoc.data();
           memesData.push({
             ...meme,
-            username: 'Mindful Bot',
-            userAvatar: defaultAvatarUrl,
-            comments: meme.comments || []
+            username: userData?.displayName || 'Anonymous',
+            userAvatar: userData?.photoURL || defaultAvatarUrl,
           });
-        } else {
-          try {
-            const userRef = doc(db, 'users', meme.userId);
-            const userSnap = await getDoc(userRef);
-            
-            if (userSnap.exists()) {
-              const userData = userSnap.data();
-              memesData.push({
-                ...meme,
-                username: userData.username || 'Anonymous',
-                userAvatar: userData.photoURL || defaultAvatarUrl,
-                comments: meme.comments || []
-              });
-            } else {
-              memesData.push({
-                ...meme,
-                username: 'Anonymous',
-                userAvatar: defaultAvatarUrl,
-                comments: meme.comments || []
-              });
-            }
-          } catch (error) {
-            console.error('Error fetching user data:', error);
-            memesData.push({
-              ...meme,
-              username: 'Anonymous',
-              userAvatar: defaultAvatarUrl,
-              comments: meme.comments || []
-            });
-          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          memesData.push({
+            ...meme,
+            username: 'Anonymous',
+            userAvatar: defaultAvatarUrl,
+          });
         }
       }
       
-      console.log('Fetched memes:', memesData); // Debug log
       setMemes(memesData);
     } catch (error) {
       console.error('Error fetching memes:', error);
@@ -114,6 +95,11 @@ const MemeContest = () => {
       return;
     }
 
+    if (!caption.trim()) {
+      toast.error('Please add a caption');
+      return;
+    }
+
     setUploadingMeme(true);
     try {
       const imageRef = ref(storage, `memes/${Date.now()}-${selectedImage.name}`);
@@ -122,7 +108,7 @@ const MemeContest = () => {
 
       const memeData = {
         imageUrl,
-        caption,
+        caption: caption.trim(),
         userId: auth.currentUser.uid,
         timestamp: serverTimestamp(),
         likes: [],
@@ -207,6 +193,12 @@ const MemeContest = () => {
     try {
       const memeRef = doc(db, 'memes', memeId);
       const memeDoc = await getDoc(memeRef);
+      
+      if (!memeDoc.exists()) {
+        toast.error('Meme not found');
+        return;
+      }
+      
       const memeData = memeDoc.data();
 
       const comment = {
@@ -223,18 +215,44 @@ const MemeContest = () => {
         comments: updatedComments
       });
 
+      // Update local state
       setMemes(memes.map(meme => 
         meme.id === memeId 
-          ? { ...meme, comments: updatedComments }
+          ? { 
+              ...meme, 
+              comments: [...(meme.comments || []), { ...comment, timestamp: new Date() }]
+            }
           : meme
       ));
 
+      // Clear comment input
       setNewComment('');
-      toast.success('Comment added');
+      toast.success('Comment added successfully');
     } catch (error) {
       console.error('Error adding comment:', error);
-      toast.error('Failed to add comment');
+      toast.error('Failed to add comment. Please try again.');
     }
+  };
+
+  const handleCommentClick = (memeId) => {
+    if (!auth.currentUser) {
+      toast.error('Please sign in to comment');
+      return;
+    }
+
+    // Toggle comments visibility
+    setShowComments(prev => ({
+      ...prev,
+      [memeId]: !prev[memeId]
+    }));
+
+    // Focus the comment input
+    setTimeout(() => {
+      const inputRef = document.getElementById(`comment-input-${memeId}`);
+      if (inputRef) {
+        inputRef.focus();
+      }
+    }, 100);
   };
 
   const handleEdit = (meme) => {
@@ -312,24 +330,24 @@ const MemeContest = () => {
         comments: [],
         timestamp: serverTimestamp()
       },
-      {
-        imageUrl: 'https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        caption: 'That moment when your mind becomes still during yoga 🌟',
-        userId: 'system',
-        likes: [],
-        likeCount: 0,
-        comments: [],
-        timestamp: serverTimestamp()
-      },
-      {
-        imageUrl: 'https://images.unsplash.com/photo-1512438248247-f0f2a5a8b7f0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        caption: 'When someone asks why you wake up at 4 AM for meditation 😌',
-        userId: 'system',
-        likes: [],
-        likeCount: 0,
-        comments: [],
-        timestamp: serverTimestamp()
-      }
+      // {
+      //   imageUrl: 'https://images.unsplash.com/photo-1593811167562-9cef47bfc4d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      //   caption: 'That moment when your mind becomes still during yoga 🌟',
+      //   userId: 'system',
+      //   likes: [],
+      //   likeCount: 0,
+      //   comments: [],
+      //   timestamp: serverTimestamp()
+      // },
+      // {
+      //   imageUrl: 'https://images.unsplash.com/photo-1512438248247-f0f2a5a8b7f0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+      //   caption: 'When someone asks why you wake up at 4 AM for meditation 😌',
+      //   userId: 'system',
+      //   likes: [],
+      //   likeCount: 0,
+      //   comments: [],
+      //   timestamp: serverTimestamp()
+      // }
     ];
 
     try {
@@ -347,6 +365,31 @@ const MemeContest = () => {
     } catch (error) {
       console.error('Error adding initial memes:', error);
       toast.error('Failed to add initial memes');
+    }
+  };
+
+  const handleShare = async (meme) => {
+    if (!auth.currentUser) {
+      toast.error('Please sign in to share memes');
+      return;
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Check out this mindful meme!',
+          text: meme.caption,
+          url: window.location.href
+        });
+      } else {
+        // Fallback for browsers that don't support Web Share API
+        const shareUrl = window.location.href;
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success('Link copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      toast.error('Failed to share meme');
     }
   };
 
@@ -464,10 +507,23 @@ const MemeContest = () => {
                           <FaRegHeart className="dark:text-white" />
                         )}
                       </button>
-                      <button className="text-2xl dark:text-white">
+                      <button 
+                        onClick={() => handleCommentClick(meme.id)}
+                        className={`text-2xl dark:text-white hover:text-blue-500 transition-colors ${
+                          showComments[meme.id] ? 'text-blue-500' : ''
+                        }`}
+                      >
                         <FaRegComment />
+                        {meme.comments?.length > 0 && (
+                          <span className="ml-1 text-sm">
+                            {meme.comments.length}
+                          </span>
+                        )}
                       </button>
-                      <button className="text-2xl dark:text-white">
+                      <button 
+                        onClick={() => handleShare(meme)}
+                        className="text-2xl dark:text-white hover:text-blue-500 transition-colors"
+                      >
                         <IoPaperPlaneOutline />
                       </button>
                     </div>
@@ -497,28 +553,71 @@ const MemeContest = () => {
                   </div>
 
                   {/* Comments Section */}
-                  {showComments[meme.id] && meme.comments.length > 0 && (
-                    <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900">
-                      {meme.comments.map((comment, index) => (
-                        <div key={index} className="flex items-start space-x-2 mb-3">
-                          <img
-                            src={comment.userAvatar}
-                            alt={comment.username}
-                            className="w-6 h-6 rounded-full"
-                          />
-                          <div>
-                            <span className="font-semibold dark:text-white mr-2">
-                              {comment.username}
-                            </span>
-                            <span className="dark:text-gray-300">{comment.text}</span>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {comment.timestamp?.toDate().toLocaleDateString()}
+                  <div className={`space-y-4 transition-all duration-300 ${showComments[meme.id] ? 'block' : 'hidden'}`}>
+                    {meme.comments && meme.comments.length > 0 && (
+                      <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                        {meme.comments.map((comment, index) => (
+                          <div key={index} className="flex items-start space-x-2 mb-3 last:mb-0">
+                            <img
+                              src={comment.userAvatar}
+                              alt={comment.username}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                            <div className="flex-1">
+                              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2">
+                                <span className="font-semibold dark:text-white mr-2">
+                                  {comment.username}
+                                </span>
+                                <span className="dark:text-gray-300">{comment.text}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-2">
+                                {comment.timestamp?.toDate().toLocaleDateString()}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Comment Input */}
+                    <div className="flex items-center space-x-2 px-4">
+                      {auth.currentUser && (
+                        <img
+                          src={auth.currentUser.photoURL || defaultAvatarUrl}
+                          alt={auth.currentUser.displayName || 'User'}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      )}
+                      <div className="flex-1 relative">
+                        <input
+                          id={`comment-input-${meme.id}`}
+                          type="text"
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          placeholder={auth.currentUser ? "Add a comment..." : "Sign in to comment"}
+                          className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={!auth.currentUser}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && auth.currentUser) {
+                              e.preventDefault();
+                              handleComment(meme.id);
+                            }
+                          }}
+                        />
+                        <button 
+                          onClick={() => handleComment(meme.id)}
+                          className={`absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-1 rounded-full font-semibold ${
+                            auth.currentUser && newComment.trim() 
+                              ? 'text-blue-500 hover:text-blue-600' 
+                              : 'text-gray-400 cursor-not-allowed'
+                          }`}
+                          disabled={!auth.currentUser || !newComment.trim()}
+                        >
+                          Post
+                        </button>
+                      </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* Comments */}
                   {meme.comments.length > 0 && (
@@ -532,30 +631,6 @@ const MemeContest = () => {
                       {showComments[meme.id] ? 'Hide' : 'View all'} {meme.comments.length} comments
                     </button>
                   )}
-
-                  {/* Comment Input */}
-                  <div className="flex items-center border-t border-gray-200 dark:border-gray-800 px-4 py-3">
-                    <input
-                      type="text"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Add a comment..."
-                      className="flex-1 bg-transparent dark:text-white focus:outline-none"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleComment(meme.id);
-                        }
-                      }}
-                    />
-                    <button 
-                      onClick={() => handleComment(meme.id)}
-                      className="text-blue-500 font-semibold ml-2 disabled:text-gray-400"
-                      disabled={!newComment.trim()}
-                    >
-                      Post
-                    </button>
-                  </div>
                 </div>
 
                 {/* Timestamp */}
@@ -586,7 +661,10 @@ const MemeContest = () => {
                 <label className="block mb-2 text-sm font-medium dark:text-gray-300">
                   Upload Meme
                 </label>
-                <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4">
+                <div 
+                  className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-4 cursor-pointer"
+                  onClick={() => document.getElementById('meme-upload').click()}
+                >
                   {selectedImage ? (
                     <img
                       src={URL.createObjectURL(selectedImage)}
@@ -599,14 +677,14 @@ const MemeContest = () => {
                       <p className="mt-2 text-sm text-gray-500">Click to upload</p>
                     </div>
                   )}
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    id="meme-upload"
-                  />
                 </div>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  id="meme-upload"
+                />
               </div>
               <div className="mb-4">
                 <label className="block mb-2 text-sm font-medium dark:text-gray-300">
@@ -616,9 +694,14 @@ const MemeContest = () => {
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   placeholder="Write a mindful caption..."
-                  className="w-full p-2 border rounded mb-4"
+                  className="w-full p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows="3"
+                  maxLength={500}
+                  required
                 />
+                <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {caption.length}/500 characters
+                </div>
               </div>
               <button
                 type="submit"

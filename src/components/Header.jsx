@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
+import VisitorCounter from "./VisitorCounter";
 
 const Header = () => {
   const auth = getAuth();
@@ -89,11 +90,11 @@ const Header = () => {
     } `,
   };
   return (
-    <header className='header sticky top-0 z-40'>
-      <div className='relative mx-auto flex max-w-7xl items-center justify-between py-3 font-raleway'>
+    <header className='header sticky top-0 z-40 bg-black'>
+      <div className='relative mx-auto flex max-w-7xl items-center justify-between py-2 font-raleway'>
         <h1
           onClick={() => navigate("/")}
-          className='logo cursor-pointer pl-4 text-lg sm:text-3xl'
+          className='logo cursor-pointer pl-8 text-xl sm:text-3xl font-bold'
         >
           Sadhanapada
         </h1>
@@ -120,31 +121,46 @@ const Header = () => {
           ></span>
         </div>
         {/* Nav links */}
-        <nav
-          className={`absolute mr-4 flex items-center space-y-6 py-12 text-center text-lg transition-all duration-500 ease-in-out md:static md:h-auto md:w-auto md:translate-x-0 md:flex-row md:space-x-5 md:space-y-0 md:bg-transparent md:py-0 md:text-left ${
+        <div
+          className={`fixed md:static md:h-auto md:bg-transparent transition-all duration-500 ease-in flex items-center gap-6 ${
             show
               ? "top-12 h-screen w-full translate-x-0 flex-col bg-black"
               : "top-12 h-screen w-full -translate-x-full flex-col bg-black"
-          } `}
+          } md:translate-x-0 md:flex-row`}
         >
-          <div className='flex items-center gap-4'>
-            <Link to='/' className='text-white hover:text-gray-300'>
+          <div className="flex items-center gap-6">
+            <VisitorCounter />
+            <Link
+              to="/"
+              className="text-white hover:text-gray-300 text-base font-medium"
+            >
               Home
             </Link>
-            <Link to='/games' className='text-white hover:text-gray-300'>
+            <Link
+              to="/games"
+              className="text-white hover:text-gray-300 text-base font-medium"
+            >
               Games
             </Link>
-            <Link to='/memes' className='text-white hover:text-gray-300'>
-              Meme Contest
+            <Link
+              to="/memes"
+              className="text-white hover:text-gray-300 text-base font-medium"
+            >
+              MemeZone
+            </Link>
+            <Link
+              to="/sadhanapada-profiles"
+              className="text-white hover:text-gray-300 text-base font-medium"
+            >
+              Profiles
+            </Link>
+            <Link
+              to="/articles"
+              className="text-white hover:text-gray-300 text-base font-medium"
+            >
+              Articles
             </Link>
           </div>
-          <li
-            className={`${styles.li} ${
-              location.pathname === "/articles" && "highlight"
-            } `}
-          >
-            <Link to='/articles'>Articles</Link>
-          </li>
           {authenticated && (
             <li
               className={`${styles.li} ${
@@ -152,7 +168,7 @@ const Header = () => {
                 "highlight"
               } `}
             >
-              <Link to={`/myblogs/${auth.currentUser.uid}`}>My Blogs</Link>
+              <Link to={`/myblogs/${auth.currentUser.uid}`}>MyBlogs</Link>
             </li>
           )}
 
@@ -174,7 +190,7 @@ const Header = () => {
                 location.pathname === "/profile" && "highlight"
               } `}
             >
-              <Link to='/profile'>Profile</Link>
+              <Link to='/profile'>MyProfile</Link>
             </li>
           )}
 
@@ -203,7 +219,7 @@ const Header = () => {
               Admin Dashboard
             </Link>
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );
