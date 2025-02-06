@@ -128,38 +128,40 @@ const Header = () => {
               : "top-12 h-screen w-full -translate-x-full flex-col bg-black"
           } md:translate-x-0 md:flex-row`}
         >
-          <div className="flex items-center gap-6">
-            <VisitorCounter />
-            <Link
-              to="/"
-              className="text-white hover:text-gray-300 text-base font-medium"
-            >
-              Home
-            </Link>
-            <Link
-              to="/games"
-              className="text-white hover:text-gray-300 text-base font-medium"
-            >
-              Games
-            </Link>
-            <Link
-              to="/memes"
-              className="text-white hover:text-gray-300 text-base font-medium"
-            >
-              MemeZone
-            </Link>
-            <Link
-              to="/sadhanapada-profiles"
-              className="text-white hover:text-gray-300 text-base font-medium"
-            >
-              Profiles
-            </Link>
-            <Link
-              to="/articles"
-              className="text-white hover:text-gray-300 text-base font-medium"
-            >
-              Articles
-            </Link>
+          <div className="flex flex-col md:flex-row items-center gap-6 w-full px-4 md:px-0">
+            <div className="flex flex-col md:flex-row items-center gap-6 w-full justify-center">
+              <VisitorCounter />
+              <Link
+                to="/"
+                className="text-white hover:text-gray-300 text-base font-medium w-full md:w-auto text-center md:text-left"
+              >
+                Home
+              </Link>
+              <Link
+                to="/games"
+                className="text-white hover:text-gray-300 text-base font-medium w-full md:w-auto text-center md:text-left"
+              >
+                Games
+              </Link>
+              <Link
+                to="/memes"
+                className="text-white hover:text-gray-300 text-base font-medium w-full md:w-auto text-center md:text-left"
+              >
+                MemeZone
+              </Link>
+              <Link
+                to="/sadhanapada-profiles"
+                className="text-white hover:text-gray-300 text-base font-medium w-full md:w-auto text-center md:text-left"
+              >
+                Profiles
+              </Link>
+              <Link
+                to="/articles"
+                className="text-white hover:text-gray-300 text-base font-medium w-full md:w-auto text-center md:text-left"
+              >
+                Articles
+              </Link>
+            </div>
           </div>
           {authenticated && (
             <li
